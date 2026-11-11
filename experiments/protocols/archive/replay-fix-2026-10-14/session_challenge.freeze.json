@@ -1,0 +1,10 @@
+{
+  "frozen_at": "2026-10-12T15:34:16.850182+00:00",
+  "scope": "Internal inspected synthetic challenge; no external registration or blind holdout",
+  "fingerprints": {
+    "episode_sha256": "df46688afe72556e32a34280085c8ee425eb2bbbb586bc2377ac4e8f6370836c",
+    "protocol_sha256": "82130e86b380e3e9726ea56c32373b1a819e2f27bdbe0530663b81636b020de6",
+    "runner_sha256": "569ff4d962c366f7e6bdfffd4df23ffd9fc8abd627642ad80b33bba266749772",
+    "outcome_helper_sha256": "5d3e8ab337f54b34e850f3c10c034f8ea95e8ecef5fc768dcf219646aec03864"
+  }
+}

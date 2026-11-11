@@ -1,0 +1,917 @@
+{
+  "schema_version": 1,
+  "id": "572c74ec-f7f8-4a9b-be13-b95eb06d9319",
+  "created_at": "2026-10-14T17:29:25.495484+00:00",
+  "request": {
+    "policy": "guarded",
+    "seed": 100,
+    "budget": 16,
+    "reduction_budget": 24,
+    "uncertainty_pct": 40,
+    "telemetry_age_s": 120,
+    "assumption_scope": "inside",
+    "bounds": {
+      "load_a": {
+        "minimum": 0.75,
+        "maximum": 1.25
+      },
+      "load_b": {
+        "minimum": 0.5,
+        "maximum": 2.0
+      },
+      "load_c": {
+        "minimum": 0.5,
+        "maximum": 1.8
+      },
+      "reported_b": {
+        "minimum": 0.5,
+        "maximum": 1.5
+      }
+    },
+    "reference": {
+      "load_a": 1,
+      "load_b": 0.8,
+      "load_c": 1,
+      "reported_b": 0.8
+    }
+  },
+  "search_implementation_sha256": "f3686299242ff174c6fcf5a9f4bbf8a486a04d10d23a07eea7942ceb3bcc2f69",
+  "core_implementation_sha256": "89044955ffc19431f697a3c30bcb04c59b00efcb0457d50ef9130c6ffc4f4d72",
+  "status": "no_failure_found",
+  "selected_strategy": null,
+  "strategies": {
+    "directed": {
+      "strategy": "directed",
+      "evaluations": 16,
+      "budget": 16,
+      "space_exhausted": false,
+      "space_size": 96822,
+      "first_failure_evaluation": null,
+      "seconds_to_first_failure": null,
+      "elapsed_seconds": 5.540472319999026,
+      "failing_scenarios": 0,
+      "categories": {
+        "within_limits": 15,
+        "controller_deferred": 1
+      },
+      "trace": [
+        {
+          "evaluation": 1,
+          "point": {
+            "load_a": 1.1,
+            "load_b": 0.8,
+            "load_c": 1.2,
+            "reported_b": 0.9
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.03420278565345845,
+          "action": "tie_b_partial_seg_a",
+          "action_label": "West backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 60.03811029573838,
+          "actual_loading_pct": 58.9264077419396,
+          "restored_kw": 439.99999986317675,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1099.9999976071113,
+            "critical_served_kw": 439.9999990793756
+          }
+        },
+        {
+          "evaluation": 2,
+          "point": {
+            "load_a": 1.05,
+            "load_b": 0.85,
+            "load_c": 1.65,
+            "reported_b": 0.95
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.032429563964042035,
+          "action": "tie_b_partial_seg_a",
+          "action_label": "West backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 71.82701607673451,
+          "actual_loading_pct": 71.80991725626718,
+          "restored_kw": 419.9999997098205,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1049.9999968195305,
+            "critical_served_kw": 419.99999877019866
+          }
+        },
+        {
+          "evaluation": 3,
+          "point": {
+            "load_a": 1.05,
+            "load_b": 1.1,
+            "load_c": 1.3,
+            "reported_b": 1.45
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.0322044185917276,
+          "action": "tie_c_partial_seg_a",
+          "action_label": "East backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 78.05423046546115,
+          "actual_loading_pct": 77.98875434763069,
+          "restored_kw": 419.9999997266153,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b_partial_seg_a",
+            "label": "West backup \u00b7 critical only",
+            "feasible": true,
+            "restored_kw": 419.99999978427985,
+            "critical_served_kw": 419.99999978427985
+          }
+        },
+        {
+          "evaluation": 4,
+          "point": {
+            "load_a": 1.15,
+            "load_b": 0.75,
+            "load_c": 0.65,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.027943302729118363,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 87.27846443056399,
+          "actual_loading_pct": 87.28872370852258,
+          "restored_kw": 1149.999997812908,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1149.999997812908,
+            "critical_served_kw": 459.9999991610341
+          }
+        },
+        {
+          "evaluation": 5,
+          "point": {
+            "load_a": 1.1,
+            "load_b": 0.7,
+            "load_c": 0.9,
+            "reported_b": 0.6
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.028690645808036742,
+          "action": "tie_b",
+          "action_label": "West backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 85.6828585759516,
+          "actual_loading_pct": 89.65848925207197,
+          "restored_kw": 1099.9999983073635,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1099.9999983073635,
+            "critical_served_kw": 439.9999993506948
+          }
+        },
+        {
+          "evaluation": 6,
+          "point": {
+            "load_a": 1.05,
+            "load_b": 0.75,
+            "load_c": 0.65,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.029703619299687078,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 82.02919560027217,
+          "actual_loading_pct": 82.03879437203399,
+          "restored_kw": 1049.9999987518263,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1049.9999987518263,
+            "critical_served_kw": 419.9999995208749
+          }
+        },
+        {
+          "evaluation": 7,
+          "point": {
+            "load_a": 1.15,
+            "load_b": 0.65,
+            "load_c": 0.65,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.028186198074620784,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 87.27846443056399,
+          "actual_loading_pct": 87.26823354871553,
+          "restored_kw": 1149.9999979064255,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1149.9999979064255,
+            "critical_served_kw": 459.99999919715674
+          }
+        },
+        {
+          "evaluation": 8,
+          "point": {
+            "load_a": 1.15,
+            "load_b": 0.9,
+            "load_c": 0.65,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.027576639259111527,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 87.27846443056399,
+          "actual_loading_pct": 87.31967286405543,
+          "restored_kw": 1149.9999976506356,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1149.9999976506356,
+            "critical_served_kw": 459.9999990983149
+          }
+        },
+        {
+          "evaluation": 9,
+          "point": {
+            "load_a": 1.05,
+            "load_b": 1.9,
+            "load_c": 1.8,
+            "reported_b": 1.5
+          },
+          "category": "controller_deferred",
+          "is_failure": false,
+          "score": -10.0,
+          "action": "hold",
+          "action_label": "Keep section isolated",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 78.46789316142996,
+          "actual_loading_pct": 78.54523525500947,
+          "restored_kw": 0.0,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b_partial_seg_a",
+            "label": "West backup \u00b7 critical only",
+            "feasible": true,
+            "restored_kw": 419.99999844563513,
+            "critical_served_kw": 419.99999844563513
+          }
+        },
+        {
+          "evaluation": 10,
+          "point": {
+            "load_a": 1.15,
+            "load_b": 0.9,
+            "load_c": 0.75,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.027039711984895416,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 91.67298469134975,
+          "actual_loading_pct": 91.71635482299317,
+          "restored_kw": 1149.999997367263,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1149.999997367263,
+            "critical_served_kw": 459.9999989885293
+          }
+        },
+        {
+          "evaluation": 11,
+          "point": {
+            "load_a": 1.1,
+            "load_b": 0.9,
+            "load_c": 0.75,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.027922615301502023,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 89.04323558371584,
+          "actual_loading_pct": 89.08526742484183,
+          "restored_kw": 1099.9999979800268,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1099.9999979800268,
+            "critical_served_kw": 439.99999922363196
+          }
+        },
+        {
+          "evaluation": 12,
+          "point": {
+            "load_a": 1.15,
+            "load_b": 0.8,
+            "load_c": 0.75,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.027284887072248108,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 91.67298469134975,
+          "actual_loading_pct": 91.69460957341418,
+          "restored_kw": 1149.9999974906336,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1149.9999974906336,
+            "critical_served_kw": 459.9999990362597
+          }
+        },
+        {
+          "evaluation": 13,
+          "point": {
+            "load_a": 1.25,
+            "load_b": 0.55,
+            "load_c": 0.85,
+            "reported_b": 0.8
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.03377447327934073,
+          "action": "tie_c_partial_seg_a",
+          "action_label": "East backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 67.02841485488338,
+          "actual_loading_pct": 66.98956702999799,
+          "restored_kw": 499.999999848749,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1249.9999968948923,
+            "critical_served_kw": 499.99999881208794
+          }
+        },
+        {
+          "evaluation": 14,
+          "point": {
+            "load_a": 1.15,
+            "load_b": 0.9,
+            "load_c": 0.75,
+            "reported_b": 0.8
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.027039711984895416,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 91.69460957341418,
+          "actual_loading_pct": 91.71635482299317,
+          "restored_kw": 1149.999997367263,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1149.999997367263,
+            "critical_served_kw": 459.9999989885293
+          }
+        },
+        {
+          "evaluation": 15,
+          "point": {
+            "load_a": 1.05,
+            "load_b": 0.9,
+            "load_c": 0.75,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.028803038618509264,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 86.41806748767091,
+          "actual_loading_pct": 86.458769875045,
+          "restored_kw": 1049.9999984628416,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1049.9999984628416,
+            "critical_served_kw": 419.99999940893065
+          }
+        },
+        {
+          "evaluation": 16,
+          "point": {
+            "load_a": 1.15,
+            "load_b": 0.9,
+            "load_c": 1.0,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.033803327681472685,
+          "action": "tie_b_partial_seg_a",
+          "action_label": "West backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 61.57370290804365,
+          "actual_loading_pct": 61.62868354914911,
+          "restored_kw": 459.99999985678835,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b_partial_seg_a",
+            "label": "West backup \u00b7 critical only",
+            "feasible": true,
+            "restored_kw": 459.99999985678835,
+            "critical_served_kw": 459.99999985678835
+          }
+        }
+      ]
+    },
+    "random": {
+      "strategy": "random",
+      "evaluations": 16,
+      "budget": 16,
+      "space_exhausted": false,
+      "space_size": 96822,
+      "first_failure_evaluation": null,
+      "seconds_to_first_failure": null,
+      "elapsed_seconds": 5.447863741999754,
+      "failing_scenarios": 0,
+      "categories": {
+        "within_limits": 16
+      },
+      "trace": [
+        {
+          "evaluation": 1,
+          "point": {
+            "load_a": 1.1,
+            "load_b": 0.8,
+            "load_c": 1.2,
+            "reported_b": 0.9
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.03420278565345845,
+          "action": "tie_b_partial_seg_a",
+          "action_label": "West backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 60.03811029573838,
+          "actual_loading_pct": 58.9264077419396,
+          "restored_kw": 439.99999986317675,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1099.9999976071113,
+            "critical_served_kw": 439.9999990793756
+          }
+        },
+        {
+          "evaluation": 2,
+          "point": {
+            "load_a": 1.05,
+            "load_b": 0.85,
+            "load_c": 1.65,
+            "reported_b": 0.95
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.032429563964042035,
+          "action": "tie_b_partial_seg_a",
+          "action_label": "West backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 71.82701607673451,
+          "actual_loading_pct": 71.80991725626718,
+          "restored_kw": 419.9999997098205,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1049.9999968195305,
+            "critical_served_kw": 419.99999877019866
+          }
+        },
+        {
+          "evaluation": 3,
+          "point": {
+            "load_a": 1.05,
+            "load_b": 1.1,
+            "load_c": 1.3,
+            "reported_b": 1.45
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.0322044185917276,
+          "action": "tie_c_partial_seg_a",
+          "action_label": "East backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 78.05423046546115,
+          "actual_loading_pct": 77.98875434763069,
+          "restored_kw": 419.9999997266153,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b_partial_seg_a",
+            "label": "West backup \u00b7 critical only",
+            "feasible": true,
+            "restored_kw": 419.99999978427985,
+            "critical_served_kw": 419.99999978427985
+          }
+        },
+        {
+          "evaluation": 4,
+          "point": {
+            "load_a": 1.15,
+            "load_b": 0.75,
+            "load_c": 0.65,
+            "reported_b": 0.7
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.027943302729118363,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 87.27846443056399,
+          "actual_loading_pct": 87.28872370852258,
+          "restored_kw": 1149.999997812908,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1149.999997812908,
+            "critical_served_kw": 459.9999991610341
+          }
+        },
+        {
+          "evaluation": 5,
+          "point": {
+            "load_a": 1.1,
+            "load_b": 0.7,
+            "load_c": 0.9,
+            "reported_b": 0.6
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.028690645808036742,
+          "action": "tie_b",
+          "action_label": "West backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 85.6828585759516,
+          "actual_loading_pct": 89.65848925207197,
+          "restored_kw": 1099.9999983073635,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1099.9999983073635,
+            "critical_served_kw": 439.9999993506948
+          }
+        },
+        {
+          "evaluation": 6,
+          "point": {
+            "load_a": 1.25,
+            "load_b": 0.6,
+            "load_c": 1.5,
+            "reported_b": 0.9
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.032618236355273764,
+          "action": "tie_b_partial_seg_a",
+          "action_label": "West backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 67.15502557642243,
+          "actual_loading_pct": 67.06457604542503,
+          "restored_kw": 499.999999695017,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1249.9999947689957,
+            "critical_served_kw": 499.9999979896385
+          }
+        },
+        {
+          "evaluation": 7,
+          "point": {
+            "load_a": 1.0,
+            "load_b": 0.9,
+            "load_c": 0.85,
+            "reported_b": 0.9
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.029144410868513142,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 88.23390393892116,
+          "actual_loading_pct": 88.23390393892116,
+          "restored_kw": 999.9999986660786,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 999.9999986660786,
+            "critical_served_kw": 399.99999948619654
+          }
+        },
+        {
+          "evaluation": 8,
+          "point": {
+            "load_a": 0.9,
+            "load_b": 1.05,
+            "load_c": 0.75,
+            "reported_b": 1.15
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.031062450793570257,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 78.65304378897687,
+          "actual_loading_pct": 78.63435207590145,
+          "restored_kw": 899.9999992815968,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 899.9999992815968,
+            "critical_served_kw": 359.99999972305136
+          }
+        },
+        {
+          "evaluation": 9,
+          "point": {
+            "load_a": 0.9,
+            "load_b": 0.8,
+            "load_c": 1.05,
+            "reported_b": 0.8
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.030062506188802744,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 91.7859340347359,
+          "actual_loading_pct": 91.7859340347359,
+          "restored_kw": 899.9999990128681,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 899.9999992826802,
+            "critical_served_kw": 359.99999972353004
+          }
+        },
+        {
+          "evaluation": 10,
+          "point": {
+            "load_a": 1.25,
+            "load_b": 1.15,
+            "load_c": 1.15,
+            "reported_b": 1.25
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.030714859490132973,
+          "action": "tie_c_partial_seg_a",
+          "action_label": "East backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 75.5808300407909,
+          "actual_loading_pct": 75.56279681179849,
+          "restored_kw": 499.9999995933053,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b_partial_seg_a",
+            "label": "West backup \u00b7 critical only",
+            "feasible": true,
+            "restored_kw": 499.999999631766,
+            "critical_served_kw": 499.999999631766
+          }
+        },
+        {
+          "evaluation": 11,
+          "point": {
+            "load_a": 1.05,
+            "load_b": 0.9,
+            "load_c": 1.2,
+            "reported_b": 1.05
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.03323320473098445,
+          "action": "tie_c_partial_seg_a",
+          "action_label": "East backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 73.57250214558282,
+          "actual_loading_pct": 73.54654012476874,
+          "restored_kw": 419.9999998173821,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1049.9999979141694,
+            "critical_served_kw": 419.9999991961986
+          }
+        },
+        {
+          "evaluation": 12,
+          "point": {
+            "load_a": 0.95,
+            "load_b": 1.6,
+            "load_c": 1.75,
+            "reported_b": 1.25
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.02964102806875798,
+          "action": "tie_b_partial_seg_a",
+          "action_label": "West backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 76.30195692386424,
+          "actual_loading_pct": 84.64490672405631,
+          "restored_kw": 379.9999992682607,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b_partial_seg_a",
+            "label": "West backup \u00b7 critical only",
+            "feasible": true,
+            "restored_kw": 379.9999992682607,
+            "critical_served_kw": 379.9999992682607
+          }
+        },
+        {
+          "evaluation": 13,
+          "point": {
+            "load_a": 0.85,
+            "load_b": 1.15,
+            "load_c": 1.5,
+            "reported_b": 1.4
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.032683307947557534,
+          "action": "tie_c_partial_seg_a",
+          "action_label": "East backup \u00b7 critical only",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 82.71981325406847,
+          "actual_loading_pct": 82.67009592639769,
+          "restored_kw": 339.9999997516242,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_b",
+            "label": "West backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 849.9999984762637,
+            "critical_served_kw": 339.9999994077238
+          }
+        },
+        {
+          "evaluation": 14,
+          "point": {
+            "load_a": 0.85,
+            "load_b": 0.75,
+            "load_c": 0.5,
+            "reported_b": 1.05
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.03398688264976451,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 65.08761187712969,
+          "actual_loading_pct": 65.04204901743103,
+          "restored_kw": 849.999999715667,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 849.999999715667,
+            "critical_served_kw": 339.99999989086143
+          }
+        },
+        {
+          "evaluation": 15,
+          "point": {
+            "load_a": 1.05,
+            "load_b": 1.75,
+            "load_c": 0.7,
+            "reported_b": 1.5
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.02694447705721651,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 84.38371331860414,
+          "actual_loading_pct": 84.43557774589479,
+          "restored_kw": 1049.9999972334688,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 1049.9999972334688,
+            "critical_served_kw": 419.9999989312769
+          }
+        },
+        {
+          "evaluation": 16,
+          "point": {
+            "load_a": 0.85,
+            "load_b": 1.6,
+            "load_c": 0.8,
+            "reported_b": 1.5
+          },
+          "category": "within_limits",
+          "is_failure": false,
+          "score": -0.03029733895479319,
+          "action": "tie_c",
+          "action_label": "East backup \u00b7 full section",
+          "truth_inside_assumed_range": true,
+          "predicted_loading_pct": 78.30337219878915,
+          "actual_loading_pct": 78.32241938249675,
+          "restored_kw": 849.9999989926486,
+          "violations": [],
+          "feasible_alternative": {
+            "action": "tie_c",
+            "label": "East backup \u00b7 full section",
+            "feasible": true,
+            "restored_kw": 849.9999989926486,
+            "critical_served_kw": 339.99999960949765
+          }
+        }
+      ]
+    }
+  },
+  "reduction": null,
+  "original_incident": null,
+  "reduced_incident": null,
+  "original_finding": null,
+  "reduced_finding": null,
+  "interpretation": "Avoidable means a feasible critical-serving alternative exists with privileged true demand. It does not mean the available telemetry uniquely identifies it. Failure counts are sampled scenarios, not independent bugs or deployment risk. No failure found is not a safety proof.",
+  "comparison": "Equal budgets of complete incident evaluations, paired seed, same discrete admissible domain. Reduction and replay are excluded from discovery costs. The first directed failure is reduced, or the first random failure if directed finds none.",
+  "content_sha256": "73f89ad5d6fefad4942349ee7322328d50a006d898b517082ebf281ad81556a6"
+}

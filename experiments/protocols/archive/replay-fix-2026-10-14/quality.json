@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "purpose": "Fixed-seed search and controller evaluation with paired uncertainty intervals and measured adapter costs.",
+  "search_seeds": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107
+  ],
+  "search_budget_per_method": 16,
+  "reduction_seeds": [
+    100
+  ],
+  "reduction_budget": 24,
+  "controller_seeds": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "controller_points_per_seed_group": 8,
+  "bootstrap_seed": 734,
+  "bootstrap_samples": 10000,
+  "controller_groups": [
+    [
+      "teaching",
+      "feed_a"
+    ],
+    [
+      "teaching",
+      "seg_a"
+    ],
+    [
+      "ieee13",
+      "632670"
+    ],
+    [
+      "ieee13",
+      "671692"
+    ]
+  ],
+  "core_sha256": "0b45e1c741b481d9ce3d11a732f0cc0401daf1f9f9c454b33854eccdf122dfb4",
+  "search_sha256": "36f393ae10d75b8d1d8566bb956bcc34e4a9dadce44474ade9e3c262e88da6d6",
+  "policy": "No controller, search, uncertainty-bound or service-threshold tuning using these results. Retain all seeds, no-hit runs and physically unattainable cases. These previously inspected cases use known small feeder models, not an external blind holdout.",
+  "metrics": "Paired capped first-failure trials (no hit = budget+1), hit rate, measured electrical-adapter solve calls, search runtime, separately budgeted reduction and strict replay. Controller results retain all-case and initially-feasible/truth-attainable denominators. Bootstrap resamples whole paired seeds, never individual correlated trials. Intervals describe this sampling protocol, not field risk.",
+  "harness_sha256": "aafbc4cb144cc14bcb5ed95a3cb0eb94cd69a762baa8068731e22feb3b01215f",
+  "frozen_at": "2026-09-21T17:52:42.553924+00:00",
+  "protocol_revision": 4,
+  "implementation_pinned_at": "2026-10-12T13:08:49.252234+00:00",
+  "implementation_pin_reason": "Execution-aware session planning and measured-overload restrictions; native circuit command values unchanged. All case inputs, seeds, budgets, tolerances, variants and analysis settings retained.",
+  "experiment_id": "gridsense-quality-0.4.3"
+}

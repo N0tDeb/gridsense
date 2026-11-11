@@ -1,0 +1,269 @@
+"""Native samples, deterministic delivery and observation-only demand estimates."""
+
+from math import isfinite
+from typing import Literal
+
+from pydantic import Field, model_validator
+
+from .domain import Record
+from .network import energized, load_connected, transformer_ids, unavailable
+
+
+class MeasurementPolicy(Record):
+    period_s: int = Field(default=1, ge=1, le=10, strict=True)
+    latency_s: int = Field(default=0, ge=0, le=30, strict=True)
+    fresh_for_s: int = Field(default=2, ge=0, le=30, strict=True)
+    initial_uncertainty_pct: float = Field(default=10, ge=0, le=80)
+    uncertainty_growth_pct_per_s: float = Field(default=2, ge=0, le=10)
+    maximum_uncertainty_pct: float = Field(default=80, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def ordered_bounds(self):
+        if self.maximum_uncertainty_pct < self.initial_uncertainty_pct:
+            raise ValueError("Maximum uncertainty must cover the initial estimate")
+        return self
+
+
+class Signal(Record):
+    sequence: int
+    sensor_id: str
+    equipment: str
+    quantity: str
+    value: float | bool | None
+    unit: str
+    measured_at_s: int
+    received_at_s: int | None = None
+    quality: Literal["valid", "deenergized", "invalid"]
+    source: Literal["OpenDSS", "modeled device status"]
+
+
+class PendingSample(Record):
+    due_s: int
+    row: Signal
+
+
+class DemandEstimate(Record):
+    load_id: str
+    kw: float
+    measured_at_s: int
+    evidence: tuple[Signal, ...]
+
+
+class TelemetryState(Record):
+    next_sequence: int = 0
+    pending: tuple[PendingSample, ...] = ()
+    latest: dict[str, Signal] = Field(default_factory=dict)
+    estimates: dict[str, DemandEstimate] = Field(default_factory=dict)
+
+
+def equipment_ids(network):
+    return {
+        *("line:" + row["id"] for row in network["lines"]),
+        *("load:" + row["id"] for row in network["loads"]),
+        *("transformer:" + name for name in transformer_ids(network)),
+        *("bus:" + row["id"] for row in network["buses"]),
+        *("bus:" + row["bus"] + "_lv" for row in network["loads"]),
+        "bus:" + network["source_bus"],
+        "source:" + network["source_bus"],
+    }
+
+
+def native_samples(engine, physical, result, at_s, next_sequence):
+    """Read the just-solved context. No requested demand is emitted as a sensor."""
+    network, rows = engine.network, []
+    valid = result is not None and result.converged
+    live = energized(physical, network)
+    live_buses = live | {
+        row["bus"] + "_lv" for row in network["loads"] if load_connected(physical, row, live)
+    }
+    if physical.source_connected:
+        live_buses.add(network["source_bus"])
+
+    def add(asset, quantity, value, unit, *, connected=True, status=False):
+        quality = "valid" if status or valid else "invalid"
+        if not status and valid and not connected:
+            quality = "deenergized"
+        if (
+            quality == "invalid"
+            or value is None
+            or (isinstance(value, float) and not isfinite(value))
+        ):
+            value, quality = None, "invalid"
+        rows.append(
+            Signal(
+                sequence=next_sequence + len(rows),
+                sensor_id=asset + "/" + quantity,
+                equipment=asset,
+                quantity=quantity,
+                value=value,
+                unit=unit,
+                measured_at_s=at_s,
+                quality=quality,
+                source="modeled device status" if status else "OpenDSS",
+            )
+        )
+
+    for bus in sorted(
+        {x.removeprefix("bus:") for x in equipment_ids(network) if x.startswith("bus:")}
+    ):
+        values = []
+        if valid:
+            engine.ctx.Circuit.SetActiveBus(bus)
+            values = engine.ctx.Bus.puVmagAngle()[::2]
+        for quantity, value in (
+            ("voltage_min_pu", min(values) if values else None),
+            ("voltage_max_pu", max(values) if values else None),
+        ):
+            add("bus:" + bus, quantity, value, "pu", connected=bus in live_buses)
+    for line in sorted(network["lines"], key=lambda r: r["id"]):
+        name, asset = line["id"], "line:" + line["id"]
+        amps = None
+        if valid:
+            engine.ctx.Circuit.SetActiveElement("Line." + name)
+            amps = max(engine.ctx.CktElement.CurrentsMagAng()[::2], default=0)
+        add(asset, "current_max_a", amps, "A")
+        add(asset, "loading_pct", result.line_loading_pct[name] if valid else None, "%")
+        add(asset, "available", name not in unavailable(physical, "line"), "bool", status=True)
+        add(asset, "closed", name in physical.closed_lines, "bool", status=True)
+    for name in sorted(transformer_ids(network)):
+        asset = "transformer:" + name
+        currents, conductors = [], 0
+        if valid:
+            engine.ctx.Circuit.SetActiveElement("Transformer." + name)
+            currents = engine.ctx.CktElement.CurrentsMagAng()[::2]
+            conductors = engine.ctx.CktElement.NumConductors()
+        for terminal, quantity in enumerate(("primary_current_a", "secondary_current_a")):
+            values = currents[terminal * conductors : terminal * conductors + 3]
+            add(asset, quantity, max(values) if values else None, "A")
+        add(asset, "loading_pct", result.transformer_loading_pct[name] if valid else None, "%")
+        add(
+            asset,
+            "available",
+            name not in unavailable(physical, "transformer"),
+            "bool",
+            status=True,
+        )
+        add(asset, "closed", name not in physical.open_transformers, "bool", status=True)
+    load_rows = {r["load_id"]: r for r in result.load_measurements} if valid else {}
+    for load in sorted(network["loads"], key=lambda r: r["id"]):
+        asset, row = "load:" + load["id"], load_rows.get(load["id"], {})
+        connected = bool(row.get("energized"))
+        add(asset, "active_power_kw", row.get("native_kw"), "kW", connected=connected)
+        add(asset, "reactive_power_kvar", row.get("native_kvar"), "kvar", connected=connected)
+        add(asset, "energized", connected if valid else None, "bool")
+    asset = "source:" + network["source_bus"]
+    add(asset, "active_power_kw", result.source_kw if valid else None, "kW")
+    add(asset, "reactive_power_kvar", result.source_kvar if valid else None, "kvar")
+    add(asset, "available", not unavailable(physical, "source"), "bool", status=True)
+    add(asset, "closed", physical.source_connected, "bool", status=True)
+    return tuple(rows)
+
+
+def deliver(state, at_s):
+    """Deliver once in (deadline, sequence) order; retain newer measurements."""
+    latest, accepted, deliveries = dict(state.latest), [], []
+    due = sorted(
+        (p for p in state.pending if p.due_s <= at_s), key=lambda p: (p.due_s, p.row.sequence)
+    )
+    for pending in due:
+        row = pending.row.model_copy(update={"received_at_s": at_s})
+        old = latest.get(row.sensor_id)
+        order = (row.measured_at_s, row.sequence)
+        applied = old is None or order > (old.measured_at_s, old.sequence)
+        if applied:
+            latest[row.sensor_id] = row
+            accepted.append(row)
+        deliveries.append(
+            {
+                "row": row.model_dump(mode="json"),
+                "applied": applied,
+                "reason": "received" if applied else "duplicate or older measurement",
+            }
+        )
+    updated = state.model_copy(
+        update={"latest": latest, "pending": tuple(p for p in state.pending if p.due_s > at_s)}
+    )
+    return updated, tuple(accepted), deliveries
+
+
+def fresh(row, at_s, policy):
+    return (
+        row.quality == "valid"
+        and row.value is not None
+        and row.received_at_s is not None
+        and 0 <= at_s - row.measured_at_s <= policy.fresh_for_s
+    )
+
+
+def estimate_demand(state, network, at_s, policy):
+    estimates = dict(state.estimates)
+    low, high = network["voltage_limits_pu"]
+    for load in network["loads"]:
+        keys = [
+            f"load:{load['id']}/active_power_kw",
+            f"load:{load['id']}/energized",
+            f"bus:{load['bus']}_lv/voltage_min_pu",
+            f"bus:{load['bus']}_lv/voltage_max_pu",
+        ]
+        evidence = tuple(state.latest[k] for k in keys if k in state.latest)
+        if len(evidence) != 4 or not all(fresh(r, at_s, policy) for r in evidence):
+            continue
+        if len({r.measured_at_s for r in evidence}) != 1:
+            continue
+        power, connected, vmin, vmax = evidence
+        if not connected.value or not (low <= vmin.value <= vmax.value <= high):
+            continue
+        previous = estimates.get(load["id"])
+        if previous and previous.measured_at_s >= power.measured_at_s:
+            continue
+        estimates[load["id"]] = DemandEstimate(
+            load_id=load["id"],
+            kw=max(0, power.value),
+            measured_at_s=power.measured_at_s,
+            evidence=evidence,
+        )
+    return state.model_copy(update={"estimates": estimates})
+
+
+def observation_rows(state, network, at_s, policy):
+    signals = []
+    for row in sorted(state.latest.values(), key=lambda r: r.sensor_id):
+        signals.append(
+            {
+                **row.model_dump(mode="json"),
+                "age_s": at_s - row.measured_at_s,
+                "fresh": fresh(row, at_s, policy),
+            }
+        )
+    estimates = []
+    for load in network["loads"]:
+        estimate = state.estimates.get(load["id"])
+        if estimate is None:
+            estimates.append(
+                {
+                    "load_id": load["id"],
+                    "kw": None,
+                    "status": "unknown",
+                    "age_s": None,
+                    "lower_kw": None,
+                    "upper_kw": None,
+                    "evidence": [],
+                }
+            )
+            continue
+        age = at_s - estimate.measured_at_s
+        uncertainty = min(
+            policy.maximum_uncertainty_pct,
+            policy.initial_uncertainty_pct + age * policy.uncertainty_growth_pct_per_s,
+        )
+        estimates.append(
+            {
+                **estimate.model_dump(mode="json"),
+                "age_s": age,
+                "status": "measured estimate" if age == 0 else "held estimate",
+                "uncertainty_pct": uncertainty,
+                "lower_kw": max(0, estimate.kw * (1 - uncertainty / 100)),
+                "upper_kw": estimate.kw * (1 + uncertainty / 100),
+            }
+        )
+    return signals, estimates

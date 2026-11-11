@@ -1,0 +1,2567 @@
+{
+  "kind": "controller-defect-reproducer",
+  "schema_version": 1,
+  "variant": "cached-action",
+  "original_case": {
+    "schema_version": 1,
+    "title": "r01 / donor-role-reversal",
+    "feeder": "teaching",
+    "fault": "feed_a",
+    "scenario": {
+      "title": "Stale west-feeder telemetry",
+      "load_a": 1.0,
+      "load_b": 1.15,
+      "load_c": 0.65,
+      "reported_b": 1.15,
+      "telemetry_age_s": 0,
+      "uncertainty_pct": 0.0,
+      "policy": "guarded"
+    },
+    "contract": {
+      "minimum_restored_kw": 990.0,
+      "minimum_critical_kw": 395.0
+    },
+    "origin": "Frozen author-designed assurance matrix 471de53ffabc44635db58e4a6126110e3c500c0a10db2ce8757ddff930679a42"
+  },
+  "reduced_case": {
+    "schema_version": 1,
+    "title": "r01 / donor-role-reversal",
+    "feeder": "teaching",
+    "fault": "feed_a",
+    "scenario": {
+      "title": "Stale west-feeder telemetry",
+      "load_a": 1.0,
+      "load_b": 1.15,
+      "load_c": 1.1,
+      "reported_b": 1.15,
+      "telemetry_age_s": 0,
+      "uncertainty_pct": 0.0,
+      "policy": "guarded"
+    },
+    "contract": {
+      "minimum_restored_kw": 990.0,
+      "minimum_critical_kw": 395.0
+    },
+    "origin": "Frozen author-designed assurance matrix 471de53ffabc44635db58e4a6126110e3c500c0a10db2ce8757ddff930679a42"
+  },
+  "priming_case": {
+    "schema_version": 1,
+    "title": "Fixed priming observation",
+    "feeder": "teaching",
+    "fault": "feed_a",
+    "scenario": {
+      "title": "Stale west-feeder telemetry",
+      "load_a": 1.0,
+      "load_b": 0.65,
+      "load_c": 1.1,
+      "reported_b": 0.65,
+      "telemetry_age_s": 0,
+      "uncertainty_pct": 0.0,
+      "policy": "guarded"
+    },
+    "contract": {
+      "minimum_restored_kw": 0.0,
+      "minimum_critical_kw": 0.0
+    },
+    "origin": "Frozen assurance protocol; only observation is given to controller"
+  },
+  "original": {
+    "variant": "cached-action",
+    "reference": {
+      "controller": "nominal-v1",
+      "action": {
+        "id": "tie_c",
+        "label": "East backup \u00b7 full section",
+        "operations": [
+          {
+            "line": "tie_c",
+            "closed": true
+          }
+        ]
+      },
+      "electrical_pass": true,
+      "service_pass": true,
+      "passed": true,
+      "result": {
+        "converged": true,
+        "feasible": true,
+        "voltages_pu": {
+          "source": 0.9986048243960363,
+          "sub": 0.9924816214620151,
+          "a1": 0.9852075669656822,
+          "a2": 0.9843309356414918,
+          "b1": 0.9904815174941171,
+          "b2": 0.9901246761732277,
+          "c1": 0.9892485561615453,
+          "c2": 0.9877128632312392,
+          "a1_lv": 0.9787411146624804,
+          "a2_lv": 0.9781207976951327,
+          "b1_lv": 0.9851686630350845,
+          "b2_lv": 0.9855177729887471,
+          "c1_lv": 0.9859212822000136,
+          "c2_lv": 0.9847994080421938
+        },
+        "line_loading_pct": {
+          "feed_a": 0.0,
+          "seg_a": 33.890818248611424,
+          "feed_b": 45.13917952253932,
+          "seg_b": 16.11746600343073,
+          "feed_c": 79.49575922064165,
+          "seg_c": 62.93934250376894,
+          "tie_b": 0.0,
+          "tie_c": 66.43573734731989
+        },
+        "transformer_loading_pct": {
+          "main": 42.10123189332534,
+          "tx_a1": 53.774796260934764,
+          "tx_a2": 51.656544822676636,
+          "tx_b1": 44.235037582816254,
+          "tx_b2": 38.38487124571472,
+          "tx_c1": 27.75926127988667,
+          "tx_c2": 24.317026966943196
+        },
+        "served_kw": 2357.4999980716257,
+        "critical_served_kw": 399.99999953765655,
+        "requested_kw": 2357.5,
+        "unserved_kw": 1.9283743313280866e-06,
+        "restored_kw": 999.9999987983817,
+        "min_voltage_pu": 0.9781207976951327,
+        "max_loading_pct": 79.49575922064165,
+        "losses_kw": 21.401666736461927,
+        "energized_buses": [
+          "a1",
+          "a2",
+          "b1",
+          "b2",
+          "c1",
+          "c2",
+          "sub"
+        ],
+        "violations": [],
+        "load_measurements": [
+          {
+            "load_id": "a1",
+            "label": "Medical campus",
+            "critical": true,
+            "requested_kw": 400.0,
+            "served_kw": 399.99999953765655,
+            "native_kw": 399.99999953765655,
+            "native_kvar": 131.47364099755734,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9787411146624804
+          },
+          {
+            "load_id": "a2",
+            "label": "Residential district",
+            "critical": false,
+            "requested_kw": 600.0,
+            "served_kw": 599.9999992607252,
+            "native_kw": 599.9999992607252,
+            "native_kvar": 197.21046144539298,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9781207976951327
+          },
+          {
+            "load_id": "b1",
+            "label": "West commercial",
+            "critical": false,
+            "requested_kw": 517.5,
+            "served_kw": 517.4999997524071,
+            "native_kw": 517.4999997524071,
+            "native_kvar": 170.09402360934246,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9851686630350845
+          },
+          {
+            "load_id": "b2",
+            "label": "West residential",
+            "critical": false,
+            "requested_kw": 287.5,
+            "served_kw": 287.4999998651151,
+            "native_kw": 287.4999998651151,
+            "native_kvar": 94.49667979818759,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9855177729887471
+          },
+          {
+            "load_id": "c1",
+            "label": "East industrial",
+            "critical": false,
+            "requested_kw": 325.0,
+            "served_kw": 324.9999998129443,
+            "native_kw": 324.9999998129443,
+            "native_kvar": 106.8223336644875,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9859212822000136
+          },
+          {
+            "load_id": "c2",
+            "label": "East residential",
+            "critical": false,
+            "requested_kw": 227.5,
+            "served_kw": 227.49999984277753,
+            "native_kw": 227.49999984277753,
+            "native_kvar": 74.7756335384071,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9847994080421938
+          }
+        ],
+        "native_load_kw": 2357.4999980716257,
+        "native_load_kvar": 774.8727730533749,
+        "source_kw": 2378.901660510279,
+        "source_kvar": 839.0967515394881,
+        "losses_kvar": 64.22397578255824,
+        "balance_residual_kw": -4.297808779085699e-06,
+        "balance_residual_kvar": 2.7035549550191718e-06,
+        "voltage_compliant_served_kw": 2357.4999980716257,
+        "restoration_baseline_kw": {
+          "a1": 0.0,
+          "a2": 0.0
+        }
+      },
+      "selected_prediction": {
+        "action": {
+          "id": "tie_c",
+          "label": "East backup \u00b7 full section",
+          "operations": [
+            {
+              "line": "tie_c",
+              "closed": true
+            }
+          ]
+        },
+        "nominal": {
+          "converged": true,
+          "feasible": true,
+          "voltages_pu": {
+            "source": 0.9986048243960363,
+            "sub": 0.9924816214620151,
+            "a1": 0.9852075669656822,
+            "a2": 0.9843309356414918,
+            "b1": 0.9904815174941171,
+            "b2": 0.9901246761732277,
+            "c1": 0.9892485561615453,
+            "c2": 0.9877128632312392,
+            "a1_lv": 0.9787411146624804,
+            "a2_lv": 0.9781207976951327,
+            "b1_lv": 0.9851686630350845,
+            "b2_lv": 0.9855177729887471,
+            "c1_lv": 0.9859212822000136,
+            "c2_lv": 0.9847994080421938
+          },
+          "line_loading_pct": {
+            "feed_a": 0.0,
+            "seg_a": 33.890818248611424,
+            "feed_b": 45.13917952253932,
+            "seg_b": 16.11746600343073,
+            "feed_c": 79.49575922064165,
+            "seg_c": 62.93934250376894,
+            "tie_b": 0.0,
+            "tie_c": 66.43573734731989
+          },
+          "transformer_loading_pct": {
+            "main": 42.10123189332534,
+            "tx_a1": 53.774796260934764,
+            "tx_a2": 51.656544822676636,
+            "tx_b1": 44.235037582816254,
+            "tx_b2": 38.38487124571472,
+            "tx_c1": 27.75926127988667,
+            "tx_c2": 24.317026966943196
+          },
+          "served_kw": 2357.4999980716257,
+          "critical_served_kw": 399.99999953765655,
+          "requested_kw": 2357.5,
+          "unserved_kw": 1.9283743313280866e-06,
+          "restored_kw": 999.9999987983817,
+          "min_voltage_pu": 0.9781207976951327,
+          "max_loading_pct": 79.49575922064165,
+          "losses_kw": 21.401666736461927,
+          "energized_buses": [
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+            "c1",
+            "c2",
+            "sub"
+          ],
+          "violations": [],
+          "load_measurements": [
+            {
+              "load_id": "a1",
+              "label": "Medical campus",
+              "critical": true,
+              "requested_kw": 400.0,
+              "served_kw": 399.99999953765655,
+              "native_kw": 399.99999953765655,
+              "native_kvar": 131.47364099755734,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9787411146624804
+            },
+            {
+              "load_id": "a2",
+              "label": "Residential district",
+              "critical": false,
+              "requested_kw": 600.0,
+              "served_kw": 599.9999992607252,
+              "native_kw": 599.9999992607252,
+              "native_kvar": 197.21046144539298,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9781207976951327
+            },
+            {
+              "load_id": "b1",
+              "label": "West commercial",
+              "critical": false,
+              "requested_kw": 517.5,
+              "served_kw": 517.4999997524071,
+              "native_kw": 517.4999997524071,
+              "native_kvar": 170.09402360934246,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9851686630350845
+            },
+            {
+              "load_id": "b2",
+              "label": "West residential",
+              "critical": false,
+              "requested_kw": 287.5,
+              "served_kw": 287.4999998651151,
+              "native_kw": 287.4999998651151,
+              "native_kvar": 94.49667979818759,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9855177729887471
+            },
+            {
+              "load_id": "c1",
+              "label": "East industrial",
+              "critical": false,
+              "requested_kw": 325.0,
+              "served_kw": 324.9999998129443,
+              "native_kw": 324.9999998129443,
+              "native_kvar": 106.8223336644875,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9859212822000136
+            },
+            {
+              "load_id": "c2",
+              "label": "East residential",
+              "critical": false,
+              "requested_kw": 227.5,
+              "served_kw": 227.49999984277753,
+              "native_kw": 227.49999984277753,
+              "native_kvar": 74.7756335384071,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9847994080421938
+            }
+          ],
+          "native_load_kw": 2357.4999980716257,
+          "native_load_kvar": 774.8727730533749,
+          "source_kw": 2378.901660510279,
+          "source_kvar": 839.0967515394881,
+          "losses_kvar": 64.22397578255824,
+          "balance_residual_kw": -4.297808779085699e-06,
+          "balance_residual_kvar": 2.7035549550191718e-06,
+          "voltage_compliant_served_kw": 2357.4999980716257,
+          "restoration_baseline_kw": {
+            "a1": 0.0,
+            "a2": 0.0
+          }
+        },
+        "feasible": true,
+        "sample_count": 1,
+        "worst_loading_pct": 79.49575922064165,
+        "worst_voltage_pu": 0.9781207976951327,
+        "rejected_reasons": []
+      },
+      "observation": {
+        "recorded_at": "2026-01-01T12:00:00+00:00",
+        "measurement_at": "2026-01-01T12:00:00+00:00",
+        "age_s": 0,
+        "load_factors": {
+          "a": 1.0,
+          "b": 1.15,
+          "c": 0.65
+        },
+        "uncertainty_pct": 0.0,
+        "rows": [
+          {
+            "sensor_id": "meter_a1",
+            "load_id": "a1",
+            "measurement": "active_demand_kw",
+            "value": 400.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_a2",
+            "load_id": "a2",
+            "measurement": "active_demand_kw",
+            "value": 600.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_b1",
+            "load_id": "b1",
+            "measurement": "active_demand_kw",
+            "value": 517.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_b2",
+            "load_id": "b2",
+            "measurement": "active_demand_kw",
+            "value": 287.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_c1",
+            "load_id": "c1",
+            "measurement": "active_demand_kw",
+            "value": 325.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_c2",
+            "load_id": "c2",
+            "measurement": "active_demand_kw",
+            "value": 227.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "converged": true,
+          "feasible": true,
+          "voltages_pu": {
+            "source": 0.9986048243960363,
+            "sub": 0.9924816214620151,
+            "a1": 0.9852075669656822,
+            "a2": 0.9843309356414918,
+            "b1": 0.9904815174941171,
+            "b2": 0.9901246761732277,
+            "c1": 0.9892485561615453,
+            "c2": 0.9877128632312392,
+            "a1_lv": 0.9787411146624804,
+            "a2_lv": 0.9781207976951327,
+            "b1_lv": 0.9851686630350845,
+            "b2_lv": 0.9855177729887471,
+            "c1_lv": 0.9859212822000136,
+            "c2_lv": 0.9847994080421938
+          },
+          "line_loading_pct": {
+            "feed_a": 0.0,
+            "seg_a": 33.890818248611424,
+            "feed_b": 45.13917952253932,
+            "seg_b": 16.11746600343073,
+            "feed_c": 79.49575922064165,
+            "seg_c": 62.93934250376894,
+            "tie_b": 0.0,
+            "tie_c": 66.43573734731989
+          },
+          "transformer_loading_pct": {
+            "main": 42.10123189332534,
+            "tx_a1": 53.774796260934764,
+            "tx_a2": 51.656544822676636,
+            "tx_b1": 44.235037582816254,
+            "tx_b2": 38.38487124571472,
+            "tx_c1": 27.75926127988667,
+            "tx_c2": 24.317026966943196
+          },
+          "served_kw": 2357.4999980716257,
+          "critical_served_kw": 399.99999953765655,
+          "requested_kw": 2357.5,
+          "unserved_kw": 1.9283743313280866e-06,
+          "restored_kw": 999.9999987983817,
+          "min_voltage_pu": 0.9781207976951327,
+          "max_loading_pct": 79.49575922064165,
+          "losses_kw": 21.401666736461927,
+          "energized_buses": [
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+            "c1",
+            "c2",
+            "sub"
+          ],
+          "violations": [],
+          "load_measurements": [
+            {
+              "load_id": "a1",
+              "label": "Medical campus",
+              "critical": true,
+              "requested_kw": 400.0,
+              "served_kw": 399.99999953765655,
+              "native_kw": 399.99999953765655,
+              "native_kvar": 131.47364099755734,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9787411146624804
+            },
+            {
+              "load_id": "a2",
+              "label": "Residential district",
+              "critical": false,
+              "requested_kw": 600.0,
+              "served_kw": 599.9999992607252,
+              "native_kw": 599.9999992607252,
+              "native_kvar": 197.21046144539298,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9781207976951327
+            },
+            {
+              "load_id": "b1",
+              "label": "West commercial",
+              "critical": false,
+              "requested_kw": 517.5,
+              "served_kw": 517.4999997524071,
+              "native_kw": 517.4999997524071,
+              "native_kvar": 170.09402360934246,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9851686630350845
+            },
+            {
+              "load_id": "b2",
+              "label": "West residential",
+              "critical": false,
+              "requested_kw": 287.5,
+              "served_kw": 287.4999998651151,
+              "native_kw": 287.4999998651151,
+              "native_kvar": 94.49667979818759,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9855177729887471
+            },
+            {
+              "load_id": "c1",
+              "label": "East industrial",
+              "critical": false,
+              "requested_kw": 325.0,
+              "served_kw": 324.9999998129443,
+              "native_kw": 324.9999998129443,
+              "native_kvar": 106.8223336644875,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9859212822000136
+            },
+            {
+              "load_id": "c2",
+              "label": "East residential",
+              "critical": false,
+              "requested_kw": 227.5,
+              "served_kw": 227.49999984277753,
+              "native_kw": 227.49999984277753,
+              "native_kvar": 74.7756335384071,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9847994080421938
+            }
+          ],
+          "native_load_kw": 2357.4999980716257,
+          "native_load_kvar": 774.8727730533749,
+          "source_kw": 2378.901660510279,
+          "source_kvar": 839.0967515394881,
+          "losses_kvar": 64.22397578255824,
+          "balance_residual_kw": -4.297808779085699e-06,
+          "balance_residual_kvar": 2.7035549550191718e-06,
+          "voltage_compliant_served_kw": 2357.4999980716257,
+          "restoration_baseline_kw": {
+            "a1": 0.0,
+            "a2": 0.0
+          }
+        }
+      ]
+    },
+    "candidate": {
+      "controller": "cached-action",
+      "action": {
+        "id": "tie_b",
+        "label": "West backup \u00b7 full section",
+        "operations": [
+          {
+            "line": "tie_b",
+            "closed": true
+          }
+        ]
+      },
+      "electrical_pass": false,
+      "service_pass": true,
+      "passed": false,
+      "result": {
+        "converged": true,
+        "feasible": false,
+        "voltages_pu": {
+          "source": 0.9986031252633165,
+          "sub": 0.992471749753716,
+          "a1": 0.9846712786001196,
+          "a2": 0.9837941578228174,
+          "b1": 0.987954327283171,
+          "b2": 0.9863421873094754,
+          "c1": 0.9913329388144589,
+          "c2": 0.9910517138317635,
+          "a1_lv": 0.9782012099981491,
+          "a2_lv": 0.9775805441975586,
+          "b1_lv": 0.9826275841977006,
+          "b2_lv": 0.9817172804815799,
+          "c1_lv": 0.9880127561986219,
+          "c2_lv": 0.9881481911583218
+        },
+        "line_loading_pct": {
+          "feed_a": 0.0,
+          "seg_a": 33.909547742219615,
+          "feed_b": 101.77802948396997,
+          "seg_b": 72.68134353415081,
+          "feed_c": 28.085103974380253,
+          "seg_c": 11.563523335892175,
+          "tie_b": 66.47243374716746,
+          "tie_c": 0.0
+        },
+        "transformer_loading_pct": {
+          "main": 42.128749169301734,
+          "tx_a1": 53.804476448260786,
+          "tx_a2": 51.6850924050534,
+          "tx_b1": 44.34942937741415,
+          "tx_b2": 38.53346918015263,
+          "tx_c1": 27.700499225371754,
+          "tx_c2": 24.23461800667562
+        },
+        "served_kw": 2357.4999975106075,
+        "critical_served_kw": 399.99999943548175,
+        "requested_kw": 2357.5,
+        "unserved_kw": 2.4893925001379102e-06,
+        "restored_kw": 999.9999985358373,
+        "min_voltage_pu": 0.9775805441975586,
+        "max_loading_pct": 101.77802948396997,
+        "losses_kw": 22.638929776980962,
+        "energized_buses": [
+          "a1",
+          "a2",
+          "b1",
+          "b2",
+          "c1",
+          "c2",
+          "sub"
+        ],
+        "violations": [
+          {
+            "kind": "line_loading",
+            "element": "feed_b",
+            "value": 101.77802948396997,
+            "limit": 100.0,
+            "message": "feed_b: 101.8% of its 100 A continuous rating."
+          }
+        ],
+        "load_measurements": [
+          {
+            "load_id": "a1",
+            "label": "Medical campus",
+            "critical": true,
+            "requested_kw": 400.0,
+            "served_kw": 399.99999943548175,
+            "native_kw": 399.99999943548175,
+            "native_kvar": 131.47364077453597,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9782012099981491
+          },
+          {
+            "load_id": "a2",
+            "label": "Residential district",
+            "critical": false,
+            "requested_kw": 600.0,
+            "served_kw": 599.9999991003556,
+            "native_kw": 599.9999991003556,
+            "native_kvar": 197.2104611041688,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9775805441975586
+          },
+          {
+            "load_id": "b1",
+            "label": "West commercial",
+            "critical": false,
+            "requested_kw": 517.5,
+            "served_kw": 517.4999995217354,
+            "native_kw": 517.4999995217354,
+            "native_kvar": 170.09402318750168,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9826275841977006
+          },
+          {
+            "load_id": "b2",
+            "label": "West residential",
+            "critical": false,
+            "requested_kw": 287.5,
+            "served_kw": 287.4999996958505,
+            "native_kw": 287.4999996958505,
+            "native_kvar": 94.4966795150911,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9817172804815799
+          },
+          {
+            "load_id": "c1",
+            "label": "East industrial",
+            "critical": false,
+            "requested_kw": 325.0,
+            "served_kw": 324.99999985703914,
+            "native_kw": 324.99999985703914,
+            "native_kvar": 106.82233366058962,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9880127561986219
+          },
+          {
+            "load_id": "c2",
+            "label": "East residential",
+            "critical": false,
+            "requested_kw": 227.5,
+            "served_kw": 227.49999990014544,
+            "native_kw": 227.49999990014544,
+            "native_kvar": 74.77563356757867,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9881481911583218
+          }
+        ],
+        "native_load_kw": 2357.4999975106075,
+        "native_load_kvar": 774.8727718094658,
+        "source_kw": 2380.138921852324,
+        "source_kvar": 840.5321166853657,
+        "losses_kvar": 65.65934153315345,
+        "balance_residual_kw": -5.435264387898542e-06,
+        "balance_residual_kvar": 3.3427464813939878e-06,
+        "voltage_compliant_served_kw": 2357.4999975106075,
+        "restoration_baseline_kw": {
+          "a1": 0.0,
+          "a2": 0.0
+        }
+      },
+      "selected_prediction": {
+        "action": {
+          "id": "tie_b",
+          "label": "West backup \u00b7 full section",
+          "operations": [
+            {
+              "line": "tie_b",
+              "closed": true
+            }
+          ]
+        },
+        "nominal": {
+          "converged": true,
+          "feasible": false,
+          "voltages_pu": {
+            "source": 0.9986031252633165,
+            "sub": 0.992471749753716,
+            "a1": 0.9846712786001196,
+            "a2": 0.9837941578228174,
+            "b1": 0.987954327283171,
+            "b2": 0.9863421873094754,
+            "c1": 0.9913329388144589,
+            "c2": 0.9910517138317635,
+            "a1_lv": 0.9782012099981491,
+            "a2_lv": 0.9775805441975586,
+            "b1_lv": 0.9826275841977006,
+            "b2_lv": 0.9817172804815799,
+            "c1_lv": 0.9880127561986219,
+            "c2_lv": 0.9881481911583218
+          },
+          "line_loading_pct": {
+            "feed_a": 0.0,
+            "seg_a": 33.909547742219615,
+            "feed_b": 101.77802948396997,
+            "seg_b": 72.68134353415081,
+            "feed_c": 28.085103974380253,
+            "seg_c": 11.563523335892175,
+            "tie_b": 66.47243374716746,
+            "tie_c": 0.0
+          },
+          "transformer_loading_pct": {
+            "main": 42.128749169301734,
+            "tx_a1": 53.804476448260786,
+            "tx_a2": 51.6850924050534,
+            "tx_b1": 44.34942937741415,
+            "tx_b2": 38.53346918015263,
+            "tx_c1": 27.700499225371754,
+            "tx_c2": 24.23461800667562
+          },
+          "served_kw": 2357.4999975106075,
+          "critical_served_kw": 399.99999943548175,
+          "requested_kw": 2357.5,
+          "unserved_kw": 2.4893925001379102e-06,
+          "restored_kw": 999.9999985358373,
+          "min_voltage_pu": 0.9775805441975586,
+          "max_loading_pct": 101.77802948396997,
+          "losses_kw": 22.638929776980962,
+          "energized_buses": [
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+            "c1",
+            "c2",
+            "sub"
+          ],
+          "violations": [
+            {
+              "kind": "line_loading",
+              "element": "feed_b",
+              "value": 101.77802948396997,
+              "limit": 100.0,
+              "message": "feed_b: 101.8% of its 100 A continuous rating."
+            }
+          ],
+          "load_measurements": [
+            {
+              "load_id": "a1",
+              "label": "Medical campus",
+              "critical": true,
+              "requested_kw": 400.0,
+              "served_kw": 399.99999943548175,
+              "native_kw": 399.99999943548175,
+              "native_kvar": 131.47364077453597,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9782012099981491
+            },
+            {
+              "load_id": "a2",
+              "label": "Residential district",
+              "critical": false,
+              "requested_kw": 600.0,
+              "served_kw": 599.9999991003556,
+              "native_kw": 599.9999991003556,
+              "native_kvar": 197.2104611041688,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9775805441975586
+            },
+            {
+              "load_id": "b1",
+              "label": "West commercial",
+              "critical": false,
+              "requested_kw": 517.5,
+              "served_kw": 517.4999995217354,
+              "native_kw": 517.4999995217354,
+              "native_kvar": 170.09402318750168,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9826275841977006
+            },
+            {
+              "load_id": "b2",
+              "label": "West residential",
+              "critical": false,
+              "requested_kw": 287.5,
+              "served_kw": 287.4999996958505,
+              "native_kw": 287.4999996958505,
+              "native_kvar": 94.4966795150911,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9817172804815799
+            },
+            {
+              "load_id": "c1",
+              "label": "East industrial",
+              "critical": false,
+              "requested_kw": 325.0,
+              "served_kw": 324.99999985703914,
+              "native_kw": 324.99999985703914,
+              "native_kvar": 106.82233366058962,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9880127561986219
+            },
+            {
+              "load_id": "c2",
+              "label": "East residential",
+              "critical": false,
+              "requested_kw": 227.5,
+              "served_kw": 227.49999990014544,
+              "native_kw": 227.49999990014544,
+              "native_kvar": 74.77563356757867,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9881481911583218
+            }
+          ],
+          "native_load_kw": 2357.4999975106075,
+          "native_load_kvar": 774.8727718094658,
+          "source_kw": 2380.138921852324,
+          "source_kvar": 840.5321166853657,
+          "losses_kvar": 65.65934153315345,
+          "balance_residual_kw": -5.435264387898542e-06,
+          "balance_residual_kvar": 3.3427464813939878e-06,
+          "voltage_compliant_served_kw": 2357.4999975106075,
+          "restoration_baseline_kw": {
+            "a1": 0.0,
+            "a2": 0.0
+          }
+        },
+        "feasible": false,
+        "sample_count": 1,
+        "worst_loading_pct": 101.77802948396997,
+        "worst_voltage_pu": 0.9775805441975586,
+        "rejected_reasons": [
+          "feed_b: 101.8% of its 100 A continuous rating."
+        ]
+      },
+      "observation": {
+        "recorded_at": "2026-01-01T12:00:00+00:00",
+        "measurement_at": "2026-01-01T12:00:00+00:00",
+        "age_s": 0,
+        "load_factors": {
+          "a": 1.0,
+          "b": 1.15,
+          "c": 0.65
+        },
+        "uncertainty_pct": 0.0,
+        "rows": [
+          {
+            "sensor_id": "meter_a1",
+            "load_id": "a1",
+            "measurement": "active_demand_kw",
+            "value": 400.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_a2",
+            "load_id": "a2",
+            "measurement": "active_demand_kw",
+            "value": 600.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_b1",
+            "load_id": "b1",
+            "measurement": "active_demand_kw",
+            "value": 517.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_b2",
+            "load_id": "b2",
+            "measurement": "active_demand_kw",
+            "value": 287.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_c1",
+            "load_id": "c1",
+            "measurement": "active_demand_kw",
+            "value": 325.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_c2",
+            "load_id": "c2",
+            "measurement": "active_demand_kw",
+            "value": 227.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "converged": true,
+          "feasible": false,
+          "voltages_pu": {
+            "source": 0.9986031252633165,
+            "sub": 0.992471749753716,
+            "a1": 0.9846712786001196,
+            "a2": 0.9837941578228174,
+            "b1": 0.987954327283171,
+            "b2": 0.9863421873094754,
+            "c1": 0.9913329388144589,
+            "c2": 0.9910517138317635,
+            "a1_lv": 0.9782012099981491,
+            "a2_lv": 0.9775805441975586,
+            "b1_lv": 0.9826275841977006,
+            "b2_lv": 0.9817172804815799,
+            "c1_lv": 0.9880127561986219,
+            "c2_lv": 0.9881481911583218
+          },
+          "line_loading_pct": {
+            "feed_a": 0.0,
+            "seg_a": 33.909547742219615,
+            "feed_b": 101.77802948396997,
+            "seg_b": 72.68134353415081,
+            "feed_c": 28.085103974380253,
+            "seg_c": 11.563523335892175,
+            "tie_b": 66.47243374716746,
+            "tie_c": 0.0
+          },
+          "transformer_loading_pct": {
+            "main": 42.128749169301734,
+            "tx_a1": 53.804476448260786,
+            "tx_a2": 51.6850924050534,
+            "tx_b1": 44.34942937741415,
+            "tx_b2": 38.53346918015263,
+            "tx_c1": 27.700499225371754,
+            "tx_c2": 24.23461800667562
+          },
+          "served_kw": 2357.4999975106075,
+          "critical_served_kw": 399.99999943548175,
+          "requested_kw": 2357.5,
+          "unserved_kw": 2.4893925001379102e-06,
+          "restored_kw": 999.9999985358373,
+          "min_voltage_pu": 0.9775805441975586,
+          "max_loading_pct": 101.77802948396997,
+          "losses_kw": 22.638929776980962,
+          "energized_buses": [
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+            "c1",
+            "c2",
+            "sub"
+          ],
+          "violations": [
+            {
+              "kind": "line_loading",
+              "element": "feed_b",
+              "value": 101.77802948396997,
+              "limit": 100.0,
+              "message": "feed_b: 101.8% of its 100 A continuous rating."
+            }
+          ],
+          "load_measurements": [
+            {
+              "load_id": "a1",
+              "label": "Medical campus",
+              "critical": true,
+              "requested_kw": 400.0,
+              "served_kw": 399.99999943548175,
+              "native_kw": 399.99999943548175,
+              "native_kvar": 131.47364077453597,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9782012099981491
+            },
+            {
+              "load_id": "a2",
+              "label": "Residential district",
+              "critical": false,
+              "requested_kw": 600.0,
+              "served_kw": 599.9999991003556,
+              "native_kw": 599.9999991003556,
+              "native_kvar": 197.2104611041688,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9775805441975586
+            },
+            {
+              "load_id": "b1",
+              "label": "West commercial",
+              "critical": false,
+              "requested_kw": 517.5,
+              "served_kw": 517.4999995217354,
+              "native_kw": 517.4999995217354,
+              "native_kvar": 170.09402318750168,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9826275841977006
+            },
+            {
+              "load_id": "b2",
+              "label": "West residential",
+              "critical": false,
+              "requested_kw": 287.5,
+              "served_kw": 287.4999996958505,
+              "native_kw": 287.4999996958505,
+              "native_kvar": 94.4966795150911,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9817172804815799
+            },
+            {
+              "load_id": "c1",
+              "label": "East industrial",
+              "critical": false,
+              "requested_kw": 325.0,
+              "served_kw": 324.99999985703914,
+              "native_kw": 324.99999985703914,
+              "native_kvar": 106.82233366058962,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9880127561986219
+            },
+            {
+              "load_id": "c2",
+              "label": "East residential",
+              "critical": false,
+              "requested_kw": 227.5,
+              "served_kw": 227.49999990014544,
+              "native_kw": 227.49999990014544,
+              "native_kvar": 74.77563356757867,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9881481911583218
+            }
+          ],
+          "native_load_kw": 2357.4999975106075,
+          "native_load_kvar": 774.8727718094658,
+          "source_kw": 2380.138921852324,
+          "source_kvar": 840.5321166853657,
+          "losses_kvar": 65.65934153315345,
+          "balance_residual_kw": -5.435264387898542e-06,
+          "balance_residual_kvar": 3.3427464813939878e-06,
+          "voltage_compliant_served_kw": 2357.4999975106075,
+          "restoration_baseline_kw": {
+            "a1": 0.0,
+            "a2": 0.0
+          }
+        }
+      ]
+    },
+    "priming_actions": [
+      {
+        "id": "tie_b",
+        "label": "West backup \u00b7 full section",
+        "operations": [
+          {
+            "line": "tie_b",
+            "closed": true
+          }
+        ]
+      },
+      {
+        "id": "tie_b",
+        "label": "West backup \u00b7 full section",
+        "operations": [
+          {
+            "line": "tie_b",
+            "closed": true
+          }
+        ]
+      }
+    ],
+    "detected": true,
+    "category": "electrical-regression",
+    "losses": [],
+    "execution_adapter_solves": 2,
+    "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4"
+  },
+  "reduced": {
+    "variant": "cached-action",
+    "reference": {
+      "controller": "nominal-v1",
+      "action": {
+        "id": "tie_c",
+        "label": "East backup \u00b7 full section",
+        "operations": [
+          {
+            "line": "tie_c",
+            "closed": true
+          }
+        ]
+      },
+      "electrical_pass": true,
+      "service_pass": true,
+      "passed": true,
+      "result": {
+        "converged": true,
+        "feasible": true,
+        "voltages_pu": {
+          "source": 0.9983672181950012,
+          "sub": 0.9912084641241722,
+          "a1": 0.9829183024212146,
+          "a2": 0.9820395778923929,
+          "b1": 0.9892057299513837,
+          "b2": 0.9888484201945864,
+          "c1": 0.9871666428409481,
+          "c2": 0.9854295834654224,
+          "a1_lv": 0.9764363845156887,
+          "a2_lv": 0.9758145756904874,
+          "b1_lv": 0.9838858733393065,
+          "b2_lv": 0.9842354582092262,
+          "c1_lv": 0.9814968328975383,
+          "c2_lv": 0.9804668378403706
+        },
+        "line_loading_pct": {
+          "feed_a": 0.0,
+          "seg_a": 33.970914988747694,
+          "feed_b": 45.19801654906122,
+          "seg_b": 16.138464649369872,
+          "feed_c": 99.32534845944427,
+          "seg_c": 71.18021519294042,
+          "tie_b": 0.0,
+          "tie_c": 66.59266939945306
+        },
+        "transformer_loading_pct": {
+          "main": 49.04628681136075,
+          "tx_a1": 53.901723231270886,
+          "tx_a2": 51.77862865128757,
+          "tx_b1": 44.29271105422389,
+          "tx_b2": 38.43488098799626,
+          "tx_c1": 47.18895984602959,
+          "tx_c2": 41.333719106624386
+        },
+        "served_kw": 2739.99999566958,
+        "critical_served_kw": 399.9999991300622,
+        "requested_kw": 2740.0,
+        "unserved_kw": 4.3304198698024265e-06,
+        "restored_kw": 999.9999977506529,
+        "min_voltage_pu": 0.9758145756904874,
+        "max_loading_pct": 99.32534845944427,
+        "losses_kw": 27.850627109945613,
+        "energized_buses": [
+          "a1",
+          "a2",
+          "b1",
+          "b2",
+          "c1",
+          "c2",
+          "sub"
+        ],
+        "violations": [],
+        "load_measurements": [
+          {
+            "load_id": "a1",
+            "label": "Medical campus",
+            "critical": true,
+            "requested_kw": 400.0,
+            "served_kw": 399.9999991300622,
+            "native_kw": 399.9999991300622,
+            "native_kvar": 131.47364007042225,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9764363845156887
+          },
+          {
+            "load_id": "a2",
+            "label": "Residential district",
+            "critical": false,
+            "requested_kw": 600.0,
+            "served_kw": 599.9999986205908,
+            "native_kw": 599.9999986205908,
+            "native_kvar": 197.21046002769663,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9758145756904874
+          },
+          {
+            "load_id": "b1",
+            "label": "West commercial",
+            "critical": false,
+            "requested_kw": 517.5,
+            "served_kw": 517.4999995263087,
+            "native_kw": 517.4999995263087,
+            "native_kvar": 170.09402285330765,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9838858733393065
+          },
+          {
+            "load_id": "b2",
+            "label": "West residential",
+            "critical": false,
+            "requested_kw": 287.5,
+            "served_kw": 287.4999997412192,
+            "native_kw": 287.4999997412192,
+            "native_kvar": 94.49667938842207,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9842354582092262
+          },
+          {
+            "load_id": "c1",
+            "label": "East industrial",
+            "critical": false,
+            "requested_kw": 550.0,
+            "served_kw": 549.9999992537005,
+            "native_kw": 549.9999992537005,
+            "native_kvar": 180.77625581391268,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9814968328975383
+          },
+          {
+            "load_id": "c2",
+            "label": "East residential",
+            "critical": false,
+            "requested_kw": 385.00000000000006,
+            "served_kw": 384.99999939769873,
+            "native_kw": 384.99999939769873,
+            "native_kvar": 126.54337899692507,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9804668378403706
+          }
+        ],
+        "native_load_kw": 2739.99999566958,
+        "native_load_kvar": 900.5944371506863,
+        "source_kw": 2767.8506131561653,
+        "source_kvar": 985.2330652956955,
+        "losses_kvar": 84.63862208230331,
+        "balance_residual_kw": -9.623360433863581e-06,
+        "balance_residual_kvar": 6.0627058786622e-06,
+        "voltage_compliant_served_kw": 2739.99999566958,
+        "restoration_baseline_kw": {
+          "a1": 0.0,
+          "a2": 0.0
+        }
+      },
+      "selected_prediction": {
+        "action": {
+          "id": "tie_c",
+          "label": "East backup \u00b7 full section",
+          "operations": [
+            {
+              "line": "tie_c",
+              "closed": true
+            }
+          ]
+        },
+        "nominal": {
+          "converged": true,
+          "feasible": true,
+          "voltages_pu": {
+            "source": 0.9983672181950012,
+            "sub": 0.9912084641241722,
+            "a1": 0.9829183024212146,
+            "a2": 0.9820395778923929,
+            "b1": 0.9892057299513837,
+            "b2": 0.9888484201945864,
+            "c1": 0.9871666428409481,
+            "c2": 0.9854295834654224,
+            "a1_lv": 0.9764363845156887,
+            "a2_lv": 0.9758145756904874,
+            "b1_lv": 0.9838858733393065,
+            "b2_lv": 0.9842354582092262,
+            "c1_lv": 0.9814968328975383,
+            "c2_lv": 0.9804668378403706
+          },
+          "line_loading_pct": {
+            "feed_a": 0.0,
+            "seg_a": 33.970914988747694,
+            "feed_b": 45.19801654906122,
+            "seg_b": 16.138464649369872,
+            "feed_c": 99.32534845944427,
+            "seg_c": 71.18021519294042,
+            "tie_b": 0.0,
+            "tie_c": 66.59266939945306
+          },
+          "transformer_loading_pct": {
+            "main": 49.04628681136075,
+            "tx_a1": 53.901723231270886,
+            "tx_a2": 51.77862865128757,
+            "tx_b1": 44.29271105422389,
+            "tx_b2": 38.43488098799626,
+            "tx_c1": 47.18895984602959,
+            "tx_c2": 41.333719106624386
+          },
+          "served_kw": 2739.99999566958,
+          "critical_served_kw": 399.9999991300622,
+          "requested_kw": 2740.0,
+          "unserved_kw": 4.3304198698024265e-06,
+          "restored_kw": 999.9999977506529,
+          "min_voltage_pu": 0.9758145756904874,
+          "max_loading_pct": 99.32534845944427,
+          "losses_kw": 27.850627109945613,
+          "energized_buses": [
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+            "c1",
+            "c2",
+            "sub"
+          ],
+          "violations": [],
+          "load_measurements": [
+            {
+              "load_id": "a1",
+              "label": "Medical campus",
+              "critical": true,
+              "requested_kw": 400.0,
+              "served_kw": 399.9999991300622,
+              "native_kw": 399.9999991300622,
+              "native_kvar": 131.47364007042225,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9764363845156887
+            },
+            {
+              "load_id": "a2",
+              "label": "Residential district",
+              "critical": false,
+              "requested_kw": 600.0,
+              "served_kw": 599.9999986205908,
+              "native_kw": 599.9999986205908,
+              "native_kvar": 197.21046002769663,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9758145756904874
+            },
+            {
+              "load_id": "b1",
+              "label": "West commercial",
+              "critical": false,
+              "requested_kw": 517.5,
+              "served_kw": 517.4999995263087,
+              "native_kw": 517.4999995263087,
+              "native_kvar": 170.09402285330765,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9838858733393065
+            },
+            {
+              "load_id": "b2",
+              "label": "West residential",
+              "critical": false,
+              "requested_kw": 287.5,
+              "served_kw": 287.4999997412192,
+              "native_kw": 287.4999997412192,
+              "native_kvar": 94.49667938842207,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9842354582092262
+            },
+            {
+              "load_id": "c1",
+              "label": "East industrial",
+              "critical": false,
+              "requested_kw": 550.0,
+              "served_kw": 549.9999992537005,
+              "native_kw": 549.9999992537005,
+              "native_kvar": 180.77625581391268,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9814968328975383
+            },
+            {
+              "load_id": "c2",
+              "label": "East residential",
+              "critical": false,
+              "requested_kw": 385.00000000000006,
+              "served_kw": 384.99999939769873,
+              "native_kw": 384.99999939769873,
+              "native_kvar": 126.54337899692507,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9804668378403706
+            }
+          ],
+          "native_load_kw": 2739.99999566958,
+          "native_load_kvar": 900.5944371506863,
+          "source_kw": 2767.8506131561653,
+          "source_kvar": 985.2330652956955,
+          "losses_kvar": 84.63862208230331,
+          "balance_residual_kw": -9.623360433863581e-06,
+          "balance_residual_kvar": 6.0627058786622e-06,
+          "voltage_compliant_served_kw": 2739.99999566958,
+          "restoration_baseline_kw": {
+            "a1": 0.0,
+            "a2": 0.0
+          }
+        },
+        "feasible": true,
+        "sample_count": 1,
+        "worst_loading_pct": 99.32534845944427,
+        "worst_voltage_pu": 0.9758145756904874,
+        "rejected_reasons": []
+      },
+      "observation": {
+        "recorded_at": "2026-01-01T12:00:00+00:00",
+        "measurement_at": "2026-01-01T12:00:00+00:00",
+        "age_s": 0,
+        "load_factors": {
+          "a": 1.0,
+          "b": 1.15,
+          "c": 1.1
+        },
+        "uncertainty_pct": 0.0,
+        "rows": [
+          {
+            "sensor_id": "meter_a1",
+            "load_id": "a1",
+            "measurement": "active_demand_kw",
+            "value": 400.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_a2",
+            "load_id": "a2",
+            "measurement": "active_demand_kw",
+            "value": 600.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_b1",
+            "load_id": "b1",
+            "measurement": "active_demand_kw",
+            "value": 517.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_b2",
+            "load_id": "b2",
+            "measurement": "active_demand_kw",
+            "value": 287.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_c1",
+            "load_id": "c1",
+            "measurement": "active_demand_kw",
+            "value": 550.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_c2",
+            "load_id": "c2",
+            "measurement": "active_demand_kw",
+            "value": 385.00000000000006,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "converged": true,
+          "feasible": true,
+          "voltages_pu": {
+            "source": 0.9983672181950012,
+            "sub": 0.9912084641241722,
+            "a1": 0.9829183024212146,
+            "a2": 0.9820395778923929,
+            "b1": 0.9892057299513837,
+            "b2": 0.9888484201945864,
+            "c1": 0.9871666428409481,
+            "c2": 0.9854295834654224,
+            "a1_lv": 0.9764363845156887,
+            "a2_lv": 0.9758145756904874,
+            "b1_lv": 0.9838858733393065,
+            "b2_lv": 0.9842354582092262,
+            "c1_lv": 0.9814968328975383,
+            "c2_lv": 0.9804668378403706
+          },
+          "line_loading_pct": {
+            "feed_a": 0.0,
+            "seg_a": 33.970914988747694,
+            "feed_b": 45.19801654906122,
+            "seg_b": 16.138464649369872,
+            "feed_c": 99.32534845944427,
+            "seg_c": 71.18021519294042,
+            "tie_b": 0.0,
+            "tie_c": 66.59266939945306
+          },
+          "transformer_loading_pct": {
+            "main": 49.04628681136075,
+            "tx_a1": 53.901723231270886,
+            "tx_a2": 51.77862865128757,
+            "tx_b1": 44.29271105422389,
+            "tx_b2": 38.43488098799626,
+            "tx_c1": 47.18895984602959,
+            "tx_c2": 41.333719106624386
+          },
+          "served_kw": 2739.99999566958,
+          "critical_served_kw": 399.9999991300622,
+          "requested_kw": 2740.0,
+          "unserved_kw": 4.3304198698024265e-06,
+          "restored_kw": 999.9999977506529,
+          "min_voltage_pu": 0.9758145756904874,
+          "max_loading_pct": 99.32534845944427,
+          "losses_kw": 27.850627109945613,
+          "energized_buses": [
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+            "c1",
+            "c2",
+            "sub"
+          ],
+          "violations": [],
+          "load_measurements": [
+            {
+              "load_id": "a1",
+              "label": "Medical campus",
+              "critical": true,
+              "requested_kw": 400.0,
+              "served_kw": 399.9999991300622,
+              "native_kw": 399.9999991300622,
+              "native_kvar": 131.47364007042225,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9764363845156887
+            },
+            {
+              "load_id": "a2",
+              "label": "Residential district",
+              "critical": false,
+              "requested_kw": 600.0,
+              "served_kw": 599.9999986205908,
+              "native_kw": 599.9999986205908,
+              "native_kvar": 197.21046002769663,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9758145756904874
+            },
+            {
+              "load_id": "b1",
+              "label": "West commercial",
+              "critical": false,
+              "requested_kw": 517.5,
+              "served_kw": 517.4999995263087,
+              "native_kw": 517.4999995263087,
+              "native_kvar": 170.09402285330765,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9838858733393065
+            },
+            {
+              "load_id": "b2",
+              "label": "West residential",
+              "critical": false,
+              "requested_kw": 287.5,
+              "served_kw": 287.4999997412192,
+              "native_kw": 287.4999997412192,
+              "native_kvar": 94.49667938842207,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9842354582092262
+            },
+            {
+              "load_id": "c1",
+              "label": "East industrial",
+              "critical": false,
+              "requested_kw": 550.0,
+              "served_kw": 549.9999992537005,
+              "native_kw": 549.9999992537005,
+              "native_kvar": 180.77625581391268,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9814968328975383
+            },
+            {
+              "load_id": "c2",
+              "label": "East residential",
+              "critical": false,
+              "requested_kw": 385.00000000000006,
+              "served_kw": 384.99999939769873,
+              "native_kw": 384.99999939769873,
+              "native_kvar": 126.54337899692507,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9804668378403706
+            }
+          ],
+          "native_load_kw": 2739.99999566958,
+          "native_load_kvar": 900.5944371506863,
+          "source_kw": 2767.8506131561653,
+          "source_kvar": 985.2330652956955,
+          "losses_kvar": 84.63862208230331,
+          "balance_residual_kw": -9.623360433863581e-06,
+          "balance_residual_kvar": 6.0627058786622e-06,
+          "voltage_compliant_served_kw": 2739.99999566958,
+          "restoration_baseline_kw": {
+            "a1": 0.0,
+            "a2": 0.0
+          }
+        }
+      ]
+    },
+    "candidate": {
+      "controller": "cached-action",
+      "action": {
+        "id": "tie_b",
+        "label": "West backup \u00b7 full section",
+        "operations": [
+          {
+            "line": "tie_b",
+            "closed": true
+          }
+        ]
+      },
+      "electrical_pass": false,
+      "service_pass": true,
+      "passed": false,
+      "result": {
+        "converged": true,
+        "feasible": false,
+        "voltages_pu": {
+          "source": 0.9983678462731395,
+          "sub": 0.9912121098785717,
+          "a1": 0.9834013310877099,
+          "a2": 0.982523049061235,
+          "b1": 0.9866887235761029,
+          "b2": 0.9850744524050891,
+          "c1": 0.9892725682395316,
+          "c2": 0.9887937573046088,
+          "a1_lv": 0.9769226826173242,
+          "a2_lv": 0.9763011891768069,
+          "b1_lv": 0.9813549975272241,
+          "b2_lv": 0.980443479680219,
+          "c1_lv": 0.9836151097581437,
+          "c2_lv": 0.9838482411519596
+        },
+        "line_loading_pct": {
+          "feed_a": 0.0,
+          "seg_a": 33.95398305370345,
+          "feed_b": 101.91078302033924,
+          "seg_b": 72.77636602069103,
+          "feed_c": 47.73914779959817,
+          "seg_c": 19.654558128033774,
+          "tie_b": 66.55949502236382,
+          "tie_c": 0.0
+        },
+        "transformer_loading_pct": {
+          "main": 49.03612346900655,
+          "tx_a1": 53.87489178450986,
+          "tx_a2": 51.752820916139896,
+          "tx_b1": 44.40694003281578,
+          "tx_b2": 38.58353208100811,
+          "tx_c1": 47.08733563031543,
+          "tx_c2": 41.19165885511251
+        },
+        "served_kw": 2739.9999960304344,
+        "critical_served_kw": 399.9999992150498,
+        "requested_kw": 2740.0,
+        "unserved_kw": 3.969565568695543e-06,
+        "restored_kw": 999.999997968588,
+        "min_voltage_pu": 0.9763011891768069,
+        "max_loading_pct": 101.91078302033924,
+        "losses_kw": 27.395230684786466,
+        "energized_buses": [
+          "a1",
+          "a2",
+          "b1",
+          "b2",
+          "c1",
+          "c2",
+          "sub"
+        ],
+        "violations": [
+          {
+            "kind": "line_loading",
+            "element": "feed_b",
+            "value": 101.91078302033924,
+            "limit": 100.0,
+            "message": "feed_b: 101.9% of its 100 A continuous rating."
+          }
+        ],
+        "load_measurements": [
+          {
+            "load_id": "a1",
+            "label": "Medical campus",
+            "critical": true,
+            "requested_kw": 400.0,
+            "served_kw": 399.9999992150498,
+            "native_kw": 399.9999992150498,
+            "native_kvar": 131.4736402338166,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9769226826173242
+          },
+          {
+            "load_id": "a2",
+            "label": "Residential district",
+            "critical": false,
+            "requested_kw": 600.0,
+            "served_kw": 599.9999987535382,
+            "native_kw": 599.9999987535382,
+            "native_kvar": 197.21046027791556,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9763011891768069
+          },
+          {
+            "load_id": "b1",
+            "label": "West commercial",
+            "critical": false,
+            "requested_kw": 517.5,
+            "served_kw": 517.4999993159043,
+            "native_kw": 517.4999993159043,
+            "native_kvar": 170.0940226165475,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9813549975272241
+          },
+          {
+            "load_id": "b2",
+            "label": "West residential",
+            "critical": false,
+            "requested_kw": 287.5,
+            "served_kw": 287.4999995695768,
+            "native_kw": 287.4999995695768,
+            "native_kvar": 94.49667918966716,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.980443479680219
+          },
+          {
+            "load_id": "c1",
+            "label": "East industrial",
+            "critical": false,
+            "requested_kw": 550.0,
+            "served_kw": 549.99999951414,
+            "native_kw": 549.99999951414,
+            "native_kvar": 180.77625623725328,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9836151097581437
+          },
+          {
+            "load_id": "c2",
+            "label": "East residential",
+            "critical": false,
+            "requested_kw": 385.00000000000006,
+            "served_kw": 384.9999996622251,
+            "native_kw": 384.9999996622251,
+            "native_kvar": 126.54337939516091,
+            "quality": "solved",
+            "voltage_compliant": true,
+            "energized": true,
+            "voltage_pu": 0.9838482411519596
+          }
+        ],
+        "native_load_kw": 2739.9999960304344,
+        "native_load_kvar": 900.594437950361,
+        "source_kw": 2767.3952178198174,
+        "source_kvar": 984.7024124203823,
+        "losses_kvar": 84.10796881657295,
+        "balance_residual_kw": -8.895403507125366e-06,
+        "balance_residual_kvar": 5.65344835479209e-06,
+        "voltage_compliant_served_kw": 2739.9999960304344,
+        "restoration_baseline_kw": {
+          "a1": 0.0,
+          "a2": 0.0
+        }
+      },
+      "selected_prediction": {
+        "action": {
+          "id": "tie_b",
+          "label": "West backup \u00b7 full section",
+          "operations": [
+            {
+              "line": "tie_b",
+              "closed": true
+            }
+          ]
+        },
+        "nominal": {
+          "converged": true,
+          "feasible": false,
+          "voltages_pu": {
+            "source": 0.9983678462731395,
+            "sub": 0.9912121098785717,
+            "a1": 0.9834013310877099,
+            "a2": 0.982523049061235,
+            "b1": 0.9866887235761029,
+            "b2": 0.9850744524050891,
+            "c1": 0.9892725682395316,
+            "c2": 0.9887937573046088,
+            "a1_lv": 0.9769226826173242,
+            "a2_lv": 0.9763011891768069,
+            "b1_lv": 0.9813549975272241,
+            "b2_lv": 0.980443479680219,
+            "c1_lv": 0.9836151097581437,
+            "c2_lv": 0.9838482411519596
+          },
+          "line_loading_pct": {
+            "feed_a": 0.0,
+            "seg_a": 33.95398305370345,
+            "feed_b": 101.91078302033924,
+            "seg_b": 72.77636602069103,
+            "feed_c": 47.73914779959817,
+            "seg_c": 19.654558128033774,
+            "tie_b": 66.55949502236382,
+            "tie_c": 0.0
+          },
+          "transformer_loading_pct": {
+            "main": 49.03612346900655,
+            "tx_a1": 53.87489178450986,
+            "tx_a2": 51.752820916139896,
+            "tx_b1": 44.40694003281578,
+            "tx_b2": 38.58353208100811,
+            "tx_c1": 47.08733563031543,
+            "tx_c2": 41.19165885511251
+          },
+          "served_kw": 2739.9999960304344,
+          "critical_served_kw": 399.9999992150498,
+          "requested_kw": 2740.0,
+          "unserved_kw": 3.969565568695543e-06,
+          "restored_kw": 999.999997968588,
+          "min_voltage_pu": 0.9763011891768069,
+          "max_loading_pct": 101.91078302033924,
+          "losses_kw": 27.395230684786466,
+          "energized_buses": [
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+            "c1",
+            "c2",
+            "sub"
+          ],
+          "violations": [
+            {
+              "kind": "line_loading",
+              "element": "feed_b",
+              "value": 101.91078302033924,
+              "limit": 100.0,
+              "message": "feed_b: 101.9% of its 100 A continuous rating."
+            }
+          ],
+          "load_measurements": [
+            {
+              "load_id": "a1",
+              "label": "Medical campus",
+              "critical": true,
+              "requested_kw": 400.0,
+              "served_kw": 399.9999992150498,
+              "native_kw": 399.9999992150498,
+              "native_kvar": 131.4736402338166,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9769226826173242
+            },
+            {
+              "load_id": "a2",
+              "label": "Residential district",
+              "critical": false,
+              "requested_kw": 600.0,
+              "served_kw": 599.9999987535382,
+              "native_kw": 599.9999987535382,
+              "native_kvar": 197.21046027791556,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9763011891768069
+            },
+            {
+              "load_id": "b1",
+              "label": "West commercial",
+              "critical": false,
+              "requested_kw": 517.5,
+              "served_kw": 517.4999993159043,
+              "native_kw": 517.4999993159043,
+              "native_kvar": 170.0940226165475,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9813549975272241
+            },
+            {
+              "load_id": "b2",
+              "label": "West residential",
+              "critical": false,
+              "requested_kw": 287.5,
+              "served_kw": 287.4999995695768,
+              "native_kw": 287.4999995695768,
+              "native_kvar": 94.49667918966716,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.980443479680219
+            },
+            {
+              "load_id": "c1",
+              "label": "East industrial",
+              "critical": false,
+              "requested_kw": 550.0,
+              "served_kw": 549.99999951414,
+              "native_kw": 549.99999951414,
+              "native_kvar": 180.77625623725328,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9836151097581437
+            },
+            {
+              "load_id": "c2",
+              "label": "East residential",
+              "critical": false,
+              "requested_kw": 385.00000000000006,
+              "served_kw": 384.9999996622251,
+              "native_kw": 384.9999996622251,
+              "native_kvar": 126.54337939516091,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9838482411519596
+            }
+          ],
+          "native_load_kw": 2739.9999960304344,
+          "native_load_kvar": 900.594437950361,
+          "source_kw": 2767.3952178198174,
+          "source_kvar": 984.7024124203823,
+          "losses_kvar": 84.10796881657295,
+          "balance_residual_kw": -8.895403507125366e-06,
+          "balance_residual_kvar": 5.65344835479209e-06,
+          "voltage_compliant_served_kw": 2739.9999960304344,
+          "restoration_baseline_kw": {
+            "a1": 0.0,
+            "a2": 0.0
+          }
+        },
+        "feasible": false,
+        "sample_count": 1,
+        "worst_loading_pct": 101.91078302033924,
+        "worst_voltage_pu": 0.9763011891768069,
+        "rejected_reasons": [
+          "feed_b: 101.9% of its 100 A continuous rating."
+        ]
+      },
+      "observation": {
+        "recorded_at": "2026-01-01T12:00:00+00:00",
+        "measurement_at": "2026-01-01T12:00:00+00:00",
+        "age_s": 0,
+        "load_factors": {
+          "a": 1.0,
+          "b": 1.15,
+          "c": 1.1
+        },
+        "uncertainty_pct": 0.0,
+        "rows": [
+          {
+            "sensor_id": "meter_a1",
+            "load_id": "a1",
+            "measurement": "active_demand_kw",
+            "value": 400.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_a2",
+            "load_id": "a2",
+            "measurement": "active_demand_kw",
+            "value": 600.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_b1",
+            "load_id": "b1",
+            "measurement": "active_demand_kw",
+            "value": 517.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_b2",
+            "load_id": "b2",
+            "measurement": "active_demand_kw",
+            "value": 287.5,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_c1",
+            "load_id": "c1",
+            "measurement": "active_demand_kw",
+            "value": 550.0,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          },
+          {
+            "sensor_id": "meter_c2",
+            "load_id": "c2",
+            "measurement": "active_demand_kw",
+            "value": 385.00000000000006,
+            "unit": "kW",
+            "measurement_at": "2026-01-01T12:00:00+00:00",
+            "received_at": "2026-01-01T12:00:00+00:00",
+            "age_s": 0,
+            "quality": "current",
+            "source": "scenario demand telemetry; simulated, not a field measurement"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "converged": true,
+          "feasible": false,
+          "voltages_pu": {
+            "source": 0.9983678462731395,
+            "sub": 0.9912121098785717,
+            "a1": 0.9834013310877099,
+            "a2": 0.982523049061235,
+            "b1": 0.9866887235761029,
+            "b2": 0.9850744524050891,
+            "c1": 0.9892725682395316,
+            "c2": 0.9887937573046088,
+            "a1_lv": 0.9769226826173242,
+            "a2_lv": 0.9763011891768069,
+            "b1_lv": 0.9813549975272241,
+            "b2_lv": 0.980443479680219,
+            "c1_lv": 0.9836151097581437,
+            "c2_lv": 0.9838482411519596
+          },
+          "line_loading_pct": {
+            "feed_a": 0.0,
+            "seg_a": 33.95398305370345,
+            "feed_b": 101.91078302033924,
+            "seg_b": 72.77636602069103,
+            "feed_c": 47.73914779959817,
+            "seg_c": 19.654558128033774,
+            "tie_b": 66.55949502236382,
+            "tie_c": 0.0
+          },
+          "transformer_loading_pct": {
+            "main": 49.03612346900655,
+            "tx_a1": 53.87489178450986,
+            "tx_a2": 51.752820916139896,
+            "tx_b1": 44.40694003281578,
+            "tx_b2": 38.58353208100811,
+            "tx_c1": 47.08733563031543,
+            "tx_c2": 41.19165885511251
+          },
+          "served_kw": 2739.9999960304344,
+          "critical_served_kw": 399.9999992150498,
+          "requested_kw": 2740.0,
+          "unserved_kw": 3.969565568695543e-06,
+          "restored_kw": 999.999997968588,
+          "min_voltage_pu": 0.9763011891768069,
+          "max_loading_pct": 101.91078302033924,
+          "losses_kw": 27.395230684786466,
+          "energized_buses": [
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+            "c1",
+            "c2",
+            "sub"
+          ],
+          "violations": [
+            {
+              "kind": "line_loading",
+              "element": "feed_b",
+              "value": 101.91078302033924,
+              "limit": 100.0,
+              "message": "feed_b: 101.9% of its 100 A continuous rating."
+            }
+          ],
+          "load_measurements": [
+            {
+              "load_id": "a1",
+              "label": "Medical campus",
+              "critical": true,
+              "requested_kw": 400.0,
+              "served_kw": 399.9999992150498,
+              "native_kw": 399.9999992150498,
+              "native_kvar": 131.4736402338166,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9769226826173242
+            },
+            {
+              "load_id": "a2",
+              "label": "Residential district",
+              "critical": false,
+              "requested_kw": 600.0,
+              "served_kw": 599.9999987535382,
+              "native_kw": 599.9999987535382,
+              "native_kvar": 197.21046027791556,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9763011891768069
+            },
+            {
+              "load_id": "b1",
+              "label": "West commercial",
+              "critical": false,
+              "requested_kw": 517.5,
+              "served_kw": 517.4999993159043,
+              "native_kw": 517.4999993159043,
+              "native_kvar": 170.0940226165475,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9813549975272241
+            },
+            {
+              "load_id": "b2",
+              "label": "West residential",
+              "critical": false,
+              "requested_kw": 287.5,
+              "served_kw": 287.4999995695768,
+              "native_kw": 287.4999995695768,
+              "native_kvar": 94.49667918966716,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.980443479680219
+            },
+            {
+              "load_id": "c1",
+              "label": "East industrial",
+              "critical": false,
+              "requested_kw": 550.0,
+              "served_kw": 549.99999951414,
+              "native_kw": 549.99999951414,
+              "native_kvar": 180.77625623725328,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9836151097581437
+            },
+            {
+              "load_id": "c2",
+              "label": "East residential",
+              "critical": false,
+              "requested_kw": 385.00000000000006,
+              "served_kw": 384.9999996622251,
+              "native_kw": 384.9999996622251,
+              "native_kvar": 126.54337939516091,
+              "quality": "solved",
+              "voltage_compliant": true,
+              "energized": true,
+              "voltage_pu": 0.9838482411519596
+            }
+          ],
+          "native_load_kw": 2739.9999960304344,
+          "native_load_kvar": 900.594437950361,
+          "source_kw": 2767.3952178198174,
+          "source_kvar": 984.7024124203823,
+          "losses_kvar": 84.10796881657295,
+          "balance_residual_kw": -8.895403507125366e-06,
+          "balance_residual_kvar": 5.65344835479209e-06,
+          "voltage_compliant_served_kw": 2739.9999960304344,
+          "restoration_baseline_kw": {
+            "a1": 0.0,
+            "a2": 0.0
+          }
+        }
+      ]
+    },
+    "priming_actions": [
+      {
+        "id": "tie_b",
+        "label": "West backup \u00b7 full section",
+        "operations": [
+          {
+            "line": "tie_b",
+            "closed": true
+          }
+        ]
+      },
+      {
+        "id": "tie_b",
+        "label": "West backup \u00b7 full section",
+        "operations": [
+          {
+            "line": "tie_b",
+            "closed": true
+          }
+        ]
+      }
+    ],
+    "detected": true,
+    "category": "electrical-regression",
+    "losses": [],
+    "execution_adapter_solves": 2,
+    "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4"
+  },
+  "trials": [
+    {
+      "case": {
+        "schema_version": 1,
+        "title": "r01 / donor-role-reversal",
+        "feeder": "teaching",
+        "fault": "feed_a",
+        "scenario": {
+          "title": "Stale west-feeder telemetry",
+          "load_a": 1.0,
+          "load_b": 0.65,
+          "load_c": 0.65,
+          "reported_b": 0.65,
+          "telemetry_age_s": 0,
+          "uncertainty_pct": 0.0,
+          "policy": "guarded"
+        },
+        "contract": {
+          "minimum_restored_kw": 990.0,
+          "minimum_critical_kw": 395.0
+        },
+        "origin": "Frozen author-designed assurance matrix 471de53ffabc44635db58e4a6126110e3c500c0a10db2ce8757ddff930679a42"
+      },
+      "kept": false,
+      "category": "no-regression",
+      "adapter_solves": 16
+    },
+    {
+      "case": {
+        "schema_version": 1,
+        "title": "r01 / donor-role-reversal",
+        "feeder": "teaching",
+        "fault": "feed_a",
+        "scenario": {
+          "title": "Stale west-feeder telemetry",
+          "load_a": 1.0,
+          "load_b": 1.15,
+          "load_c": 1.1,
+          "reported_b": 1.15,
+          "telemetry_age_s": 0,
+          "uncertainty_pct": 0.0,
+          "policy": "guarded"
+        },
+        "contract": {
+          "minimum_restored_kw": 990.0,
+          "minimum_critical_kw": 395.0
+        },
+        "origin": "Frozen author-designed assurance matrix 471de53ffabc44635db58e4a6126110e3c500c0a10db2ce8757ddff930679a42"
+      },
+      "kept": true,
+      "category": "electrical-regression",
+      "adapter_solves": 16
+    },
+    {
+      "case": {
+        "schema_version": 1,
+        "title": "r01 / donor-role-reversal",
+        "feeder": "teaching",
+        "fault": "feed_a",
+        "scenario": {
+          "title": "Stale west-feeder telemetry",
+          "load_a": 1.0,
+          "load_b": 0.65,
+          "load_c": 1.1,
+          "reported_b": 0.65,
+          "telemetry_age_s": 0,
+          "uncertainty_pct": 0.0,
+          "policy": "guarded"
+        },
+        "contract": {
+          "minimum_restored_kw": 990.0,
+          "minimum_critical_kw": 395.0
+        },
+        "origin": "Frozen author-designed assurance matrix 471de53ffabc44635db58e4a6126110e3c500c0a10db2ce8757ddff930679a42"
+      },
+      "kept": false,
+      "category": "no-regression",
+      "adapter_solves": 16
+    },
+    {
+      "case": {
+        "schema_version": 1,
+        "title": "r01 / donor-role-reversal",
+        "feeder": "teaching",
+        "fault": "feed_a",
+        "scenario": {
+          "title": "Stale west-feeder telemetry",
+          "load_a": 1.0,
+          "load_b": 0.65,
+          "load_c": 1.1,
+          "reported_b": 0.65,
+          "telemetry_age_s": 0,
+          "uncertainty_pct": 0.0,
+          "policy": "guarded"
+        },
+        "contract": {
+          "minimum_restored_kw": 990.0,
+          "minimum_critical_kw": 395.0
+        },
+        "origin": "Frozen author-designed assurance matrix 471de53ffabc44635db58e4a6126110e3c500c0a10db2ce8757ddff930679a42"
+      },
+      "kept": false,
+      "category": "no-regression",
+      "adapter_solves": 16
+    }
+  ],
+  "complexity_before": 3,
+  "complexity_after": 2,
+  "budget": 24,
+  "cost": {
+    "original_recheck_adapter_solves": 16,
+    "reduction_adapter_solves": 64
+  },
+  "manifest": {
+    "assurance_sha256": "3991122b31eec15e03701fcb5c1e06cb584e1f07700a32232ab471b20d99967d",
+    "harness_sha256": "d34e5731004bcbb04b54a814d405d74a71109a46a230c76c0aff6981b86c4839",
+    "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4"
+  },
+  "content_sha256": "008e485183ea1206ada4fcfd140c85c4c78e0aee96a36ae2bd75dcbb4b6dba12"
+}

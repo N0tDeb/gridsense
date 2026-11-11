@@ -1,0 +1,1192 @@
+{
+  "configuration": "ieee13-native-model-envelope-v1",
+  "converged": true,
+  "passed": true,
+  "published_voltage_checks": [
+    {
+      "id": "632.1",
+      "category": "independently-published-voltage",
+      "expected": 1.021,
+      "actual": 1.0207842918306356,
+      "absolute_error": 0.000215708169364337,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "632.2",
+      "category": "independently-published-voltage",
+      "expected": 1.042,
+      "actual": 1.0418136393322515,
+      "absolute_error": 0.00018636066774857518,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "632.3",
+      "category": "independently-published-voltage",
+      "expected": 1.0174,
+      "actual": 1.0174965411711763,
+      "absolute_error": 9.654117117618988e-05,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "633.1",
+      "category": "independently-published-voltage",
+      "expected": 1.018,
+      "actual": 1.0177546105892745,
+      "absolute_error": 0.0002453894107254939,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "633.2",
+      "category": "independently-published-voltage",
+      "expected": 1.0401,
+      "actual": 1.0399188137924202,
+      "absolute_error": 0.00018118620757978654,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "633.3",
+      "category": "independently-published-voltage",
+      "expected": 1.0148,
+      "actual": 1.0148847171920197,
+      "absolute_error": 8.471719201974537e-05,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "634.1",
+      "category": "independently-published-voltage",
+      "expected": 0.994,
+      "actual": 0.9937748433391652,
+      "absolute_error": 0.00022515666083477992,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "634.2",
+      "category": "independently-published-voltage",
+      "expected": 1.0218,
+      "actual": 1.0215609301473823,
+      "absolute_error": 0.00023906985261779035,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "634.3",
+      "category": "independently-published-voltage",
+      "expected": 0.996,
+      "actual": 0.9960550235280015,
+      "absolute_error": 5.502352800146326e-05,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "645.2",
+      "category": "independently-published-voltage",
+      "expected": 1.0329,
+      "actual": 1.0326417147931128,
+      "absolute_error": 0.0002582852068870878,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "645.3",
+      "category": "independently-published-voltage",
+      "expected": 1.0155,
+      "actual": 1.0155201477407774,
+      "absolute_error": 2.014774077729875e-05,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "646.2",
+      "category": "independently-published-voltage",
+      "expected": 1.0311,
+      "actual": 1.0309043071877884,
+      "absolute_error": 0.00019569281221154533,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "646.3",
+      "category": "independently-published-voltage",
+      "expected": 1.0134,
+      "actual": 1.0134599482944124,
+      "absolute_error": 5.9948294412359715e-05,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "671.1",
+      "category": "independently-published-voltage",
+      "expected": 0.99,
+      "actual": 0.9893766075419813,
+      "absolute_error": 0.0006233924580186789,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "671.2",
+      "category": "independently-published-voltage",
+      "expected": 1.0529,
+      "actual": 1.0532738668559396,
+      "absolute_error": 0.00037386685593965296,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "671.3",
+      "category": "independently-published-voltage",
+      "expected": 0.9778,
+      "actual": 0.9789705281922113,
+      "absolute_error": 0.0011705281922113064,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "680.1",
+      "category": "independently-published-voltage",
+      "expected": 0.99,
+      "actual": 0.9893766201453296,
+      "absolute_error": 0.000623379854670425,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "680.2",
+      "category": "independently-published-voltage",
+      "expected": 1.0529,
+      "actual": 1.0532738818821836,
+      "absolute_error": 0.0003738818821836798,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "680.3",
+      "category": "independently-published-voltage",
+      "expected": 0.9778,
+      "actual": 0.9789705421992221,
+      "absolute_error": 0.00117054219922208,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "684.1",
+      "category": "independently-published-voltage",
+      "expected": 0.9881,
+      "actual": 0.9874339128045057,
+      "absolute_error": 0.0006660871954943248,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "684.3",
+      "category": "independently-published-voltage",
+      "expected": 0.9758,
+      "actual": 0.9769594287746312,
+      "absolute_error": 0.001159428774631155,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "611.3",
+      "category": "independently-published-voltage",
+      "expected": 0.9738,
+      "actual": 0.9749622908525643,
+      "absolute_error": 0.0011622908525642517,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "652.1",
+      "category": "independently-published-voltage",
+      "expected": 0.9825,
+      "actual": 0.9818572713262406,
+      "absolute_error": 0.000642728673759474,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "692.1",
+      "category": "independently-published-voltage",
+      "expected": 0.99,
+      "actual": 0.9893765982378897,
+      "absolute_error": 0.0006234017621102872,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "692.2",
+      "category": "independently-published-voltage",
+      "expected": 1.0529,
+      "actual": 1.0532738657174077,
+      "absolute_error": 0.00037386571740771757,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "692.3",
+      "category": "independently-published-voltage",
+      "expected": 0.9777,
+      "actual": 0.9789705208222529,
+      "absolute_error": 0.001270520822252874,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "675.1",
+      "category": "independently-published-voltage",
+      "expected": 0.9835,
+      "actual": 0.9829185958458939,
+      "absolute_error": 0.0005814041541061243,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "675.2",
+      "category": "independently-published-voltage",
+      "expected": 1.0553,
+      "actual": 1.0556117991159037,
+      "absolute_error": 0.00031179911590384357,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    },
+    {
+      "id": "675.3",
+      "category": "independently-published-voltage",
+      "expected": 0.9758,
+      "actual": 0.9771293477798183,
+      "absolute_error": 0.0013293477798183018,
+      "tolerance": 0.003,
+      "unit": "pu",
+      "passed": true
+    }
+  ],
+  "declared_model_checks": [
+    {
+      "id": "634a-model",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "model",
+      "passed": true
+    },
+    {
+      "id": "634a-phases",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "phases",
+      "passed": true
+    },
+    {
+      "id": "634a-delta",
+      "category": "declared-model-contract",
+      "expected": 0,
+      "actual": 0,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "delta",
+      "passed": true
+    },
+    {
+      "id": "634a-rated_phase_kv",
+      "category": "declared-model-contract",
+      "expected": 0.277,
+      "actual": 0.277,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "rated_phase_kv",
+      "passed": true
+    },
+    {
+      "id": "634a-vminpu",
+      "category": "declared-model-contract",
+      "expected": 0.95,
+      "actual": 0.95,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vminpu",
+      "passed": true
+    },
+    {
+      "id": "634a-vmaxpu",
+      "category": "declared-model-contract",
+      "expected": 1.05,
+      "actual": 1.05,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vmaxpu",
+      "passed": true
+    },
+    {
+      "id": "634b-model",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "model",
+      "passed": true
+    },
+    {
+      "id": "634b-phases",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "phases",
+      "passed": true
+    },
+    {
+      "id": "634b-delta",
+      "category": "declared-model-contract",
+      "expected": 0,
+      "actual": 0,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "delta",
+      "passed": true
+    },
+    {
+      "id": "634b-rated_phase_kv",
+      "category": "declared-model-contract",
+      "expected": 0.277,
+      "actual": 0.277,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "rated_phase_kv",
+      "passed": true
+    },
+    {
+      "id": "634b-vminpu",
+      "category": "declared-model-contract",
+      "expected": 0.95,
+      "actual": 0.95,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vminpu",
+      "passed": true
+    },
+    {
+      "id": "634b-vmaxpu",
+      "category": "declared-model-contract",
+      "expected": 1.05,
+      "actual": 1.05,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vmaxpu",
+      "passed": true
+    },
+    {
+      "id": "634c-model",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "model",
+      "passed": true
+    },
+    {
+      "id": "634c-phases",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "phases",
+      "passed": true
+    },
+    {
+      "id": "634c-delta",
+      "category": "declared-model-contract",
+      "expected": 0,
+      "actual": 0,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "delta",
+      "passed": true
+    },
+    {
+      "id": "634c-rated_phase_kv",
+      "category": "declared-model-contract",
+      "expected": 0.277,
+      "actual": 0.277,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "rated_phase_kv",
+      "passed": true
+    },
+    {
+      "id": "634c-vminpu",
+      "category": "declared-model-contract",
+      "expected": 0.95,
+      "actual": 0.95,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vminpu",
+      "passed": true
+    },
+    {
+      "id": "634c-vmaxpu",
+      "category": "declared-model-contract",
+      "expected": 1.05,
+      "actual": 1.05,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vmaxpu",
+      "passed": true
+    },
+    {
+      "id": "645-model",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "model",
+      "passed": true
+    },
+    {
+      "id": "645-phases",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "phases",
+      "passed": true
+    },
+    {
+      "id": "645-delta",
+      "category": "declared-model-contract",
+      "expected": 0,
+      "actual": 0,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "delta",
+      "passed": true
+    },
+    {
+      "id": "645-rated_phase_kv",
+      "category": "declared-model-contract",
+      "expected": 2.4,
+      "actual": 2.4,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "rated_phase_kv",
+      "passed": true
+    },
+    {
+      "id": "645-vminpu",
+      "category": "declared-model-contract",
+      "expected": 0.95,
+      "actual": 0.95,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vminpu",
+      "passed": true
+    },
+    {
+      "id": "645-vmaxpu",
+      "category": "declared-model-contract",
+      "expected": 1.05,
+      "actual": 1.05,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vmaxpu",
+      "passed": true
+    },
+    {
+      "id": "675a-model",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "model",
+      "passed": true
+    },
+    {
+      "id": "675a-phases",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "phases",
+      "passed": true
+    },
+    {
+      "id": "675a-delta",
+      "category": "declared-model-contract",
+      "expected": 0,
+      "actual": 0,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "delta",
+      "passed": true
+    },
+    {
+      "id": "675a-rated_phase_kv",
+      "category": "declared-model-contract",
+      "expected": 2.4,
+      "actual": 2.4,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "rated_phase_kv",
+      "passed": true
+    },
+    {
+      "id": "675a-vminpu",
+      "category": "declared-model-contract",
+      "expected": 0.95,
+      "actual": 0.95,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vminpu",
+      "passed": true
+    },
+    {
+      "id": "675a-vmaxpu",
+      "category": "declared-model-contract",
+      "expected": 1.05,
+      "actual": 1.05,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vmaxpu",
+      "passed": true
+    },
+    {
+      "id": "675b-model",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "model",
+      "passed": true
+    },
+    {
+      "id": "675b-phases",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "phases",
+      "passed": true
+    },
+    {
+      "id": "675b-delta",
+      "category": "declared-model-contract",
+      "expected": 0,
+      "actual": 0,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "delta",
+      "passed": true
+    },
+    {
+      "id": "675b-rated_phase_kv",
+      "category": "declared-model-contract",
+      "expected": 2.4,
+      "actual": 2.4,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "rated_phase_kv",
+      "passed": true
+    },
+    {
+      "id": "675b-vminpu",
+      "category": "declared-model-contract",
+      "expected": 0.95,
+      "actual": 0.95,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vminpu",
+      "passed": true
+    },
+    {
+      "id": "675b-vmaxpu",
+      "category": "declared-model-contract",
+      "expected": 1.05,
+      "actual": 1.05,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vmaxpu",
+      "passed": true
+    },
+    {
+      "id": "675c-model",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "model",
+      "passed": true
+    },
+    {
+      "id": "675c-phases",
+      "category": "declared-model-contract",
+      "expected": 1,
+      "actual": 1,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "phases",
+      "passed": true
+    },
+    {
+      "id": "675c-delta",
+      "category": "declared-model-contract",
+      "expected": 0,
+      "actual": 0,
+      "absolute_error": 0,
+      "tolerance": 1e-12,
+      "unit": "delta",
+      "passed": true
+    },
+    {
+      "id": "675c-rated_phase_kv",
+      "category": "declared-model-contract",
+      "expected": 2.4,
+      "actual": 2.4,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "rated_phase_kv",
+      "passed": true
+    },
+    {
+      "id": "675c-vminpu",
+      "category": "declared-model-contract",
+      "expected": 0.95,
+      "actual": 0.95,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vminpu",
+      "passed": true
+    },
+    {
+      "id": "675c-vmaxpu",
+      "category": "declared-model-contract",
+      "expected": 1.05,
+      "actual": 1.05,
+      "absolute_error": 0.0,
+      "tolerance": 1e-12,
+      "unit": "vmaxpu",
+      "passed": true
+    }
+  ],
+  "model_envelope_checks": [
+    {
+      "id": "634a-kw",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 160.0,
+      "expected_upper": 160.0,
+      "numeric_allowance": 0.05,
+      "actual": 160.00000036969058,
+      "unit": "kw",
+      "passed": true
+    },
+    {
+      "id": "634a-kvar",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 110.0,
+      "expected_upper": 110.0,
+      "numeric_allowance": 0.05,
+      "actual": 110.00000052155886,
+      "unit": "kvar",
+      "passed": true
+    },
+    {
+      "id": "634a-current_a",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 702.7403761618287,
+      "expected_upper": 706.995111032637,
+      "numeric_allowance": 0.1,
+      "actual": 705.0210235194254,
+      "unit": "current_a",
+      "passed": true
+    },
+    {
+      "id": "634b-kw",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 120.0,
+      "expected_upper": 120.0,
+      "numeric_allowance": 0.05,
+      "actual": 119.99999976497831,
+      "unit": "kw",
+      "passed": true
+    },
+    {
+      "id": "634b-kvar",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 90.0,
+      "expected_upper": 90.0,
+      "numeric_allowance": 0.05,
+      "actual": 90.0000000279395,
+      "unit": "kvar",
+      "passed": true
+    },
+    {
+      "id": "634b-current_a",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 528.167327639807,
+      "expected_upper": 531.2778537154242,
+      "numeric_allowance": 0.1,
+      "actual": 529.8419905988637,
+      "unit": "current_a",
+      "passed": true
+    },
+    {
+      "id": "634c-kw",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 120.0,
+      "expected_upper": 120.0,
+      "numeric_allowance": 0.05,
+      "actual": 119.99999984817285,
+      "unit": "kw",
+      "passed": true
+    },
+    {
+      "id": "634c-kvar",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 90.0,
+      "expected_upper": 90.0,
+      "numeric_allowance": 0.05,
+      "actual": 89.99999930110674,
+      "unit": "kvar",
+      "passed": true
+    },
+    {
+      "id": "634c-current_a",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 541.8076850503245,
+      "expected_upper": 545.0814474977585,
+      "numeric_allowance": 0.1,
+      "actual": 543.4096135539669,
+      "unit": "current_a",
+      "passed": true
+    },
+    {
+      "id": "645-kw",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 170.0,
+      "expected_upper": 170.0,
+      "numeric_allowance": 0.05,
+      "actual": 169.99999969675596,
+      "unit": "kw",
+      "passed": true
+    },
+    {
+      "id": "645-kvar",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 125.0,
+      "expected_upper": 125.0,
+      "numeric_allowance": 0.05,
+      "actual": 125.00000006642804,
+      "unit": "kvar",
+      "passed": true
+    },
+    {
+      "id": "645-current_a",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 84.81085231800708,
+      "expected_upper": 85.30494408799254,
+      "numeric_allowance": 0.1,
+      "actual": 85.07845516243681,
+      "unit": "current_a",
+      "passed": true
+    },
+    {
+      "id": "675a-kw",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 485.0,
+      "expected_upper": 485.0,
+      "numeric_allowance": 0.05,
+      "actual": 485.00000168333344,
+      "unit": "kw",
+      "passed": true
+    },
+    {
+      "id": "675a-kvar",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 190.0,
+      "expected_upper": 190.0,
+      "numeric_allowance": 0.05,
+      "actual": 190.0000014336474,
+      "unit": "kvar",
+      "passed": true
+    },
+    {
+      "id": "675a-current_a",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 219.84425091206967,
+      "expected_upper": 221.1895497447799,
+      "numeric_allowance": 0.1,
+      "actual": 220.64528569471722,
+      "unit": "current_a",
+      "passed": true
+    },
+    {
+      "id": "675b-kw",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 68.39941360305035,
+      "expected_upper": 69.18163631547155,
+      "numeric_allowance": 0.05,
+      "actual": 68.83062439809514,
+      "unit": "kw",
+      "passed": true
+    },
+    {
+      "id": "675b-kvar",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 60.35242376739736,
+      "expected_upper": 61.042620278357255,
+      "numeric_allowance": 0.05,
+      "actual": 60.73290413882844,
+      "unit": "kvar",
+      "passed": true
+    },
+    {
+      "id": "675b-current_a",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 36.092149109797134,
+      "expected_upper": 36.29793918359621,
+      "numeric_allowance": 0.1,
+      "actual": 36.20573839024414,
+      "unit": "current_a",
+      "passed": true
+    },
+    {
+      "id": "675c-kw",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 290.0,
+      "expected_upper": 290.0,
+      "numeric_allowance": 0.05,
+      "actual": 289.99999956619394,
+      "unit": "kw",
+      "passed": true
+    },
+    {
+      "id": "675c-kvar",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 212.0,
+      "expected_upper": 212.0,
+      "numeric_allowance": 0.05,
+      "actual": 211.99999747458526,
+      "unit": "kvar",
+      "passed": true
+    },
+    {
+      "id": "675c-current_a",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 152.8066463289835,
+      "expected_upper": 153.7491215324929,
+      "numeric_allowance": 0.1,
+      "actual": 153.06790753987698,
+      "unit": "current_a",
+      "passed": true
+    },
+    {
+      "id": "xfm1-lv-current-1",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 702.7403761618287,
+      "expected_upper": 706.995111032637,
+      "numeric_allowance": 0.1,
+      "actual": 705.0210256734213,
+      "unit": "A",
+      "passed": true
+    },
+    {
+      "id": "xfm1-lv-current-2",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 528.167327639807,
+      "expected_upper": 531.2778537154242,
+      "numeric_allowance": 0.1,
+      "actual": 529.8419899669965,
+      "unit": "A",
+      "passed": true
+    },
+    {
+      "id": "xfm1-lv-current-3",
+      "category": "published-voltage-and-declared-model-envelope",
+      "expected_lower": 541.8076850503245,
+      "expected_upper": 545.0814474977585,
+      "numeric_allowance": 0.1,
+      "actual": 543.4096116084246,
+      "unit": "A",
+      "passed": true
+    }
+  ],
+  "internal_balance_checks": [
+    {
+      "id": "balance-kW",
+      "category": "internal-consistency",
+      "expected": 0,
+      "actual": -7.0130564182591115e-06,
+      "absolute_error": 7.0130564182591115e-06,
+      "tolerance": 0.05,
+      "unit": "kW",
+      "passed": true
+    },
+    {
+      "id": "balance-kvar",
+      "category": "internal-consistency",
+      "expected": 0,
+      "actual": 2.6039589329229784e-07,
+      "absolute_error": 2.6039589329229784e-07,
+      "tolerance": 0.05,
+      "unit": "kvar",
+      "passed": true
+    }
+  ],
+  "balance_components": {
+    "source_injection_kw_kvar": [
+      3577.840681111798,
+      1722.427905755647
+    ],
+    "loads_kw_kvar": [
+      3467.3531726207457,
+      2102.5424135491803
+    ],
+    "capacitors_kw_kvar": [
+      -1.0913936421275139e-14,
+      -702.2413690552368
+    ],
+    "losses_kw_kvar": [
+      110.4875155041087,
+      322.12686100130765
+    ],
+    "residual_kw_kvar": [
+      -7.0130564182591115e-06,
+      2.6039589329229784e-07
+    ]
+  },
+  "convergence_study": [
+    {
+      "load_multiplier": 0.5,
+      "convergence_tolerance": 0.0001,
+      "converged": true,
+      "iterations": 3,
+      "solve_seconds": 6.78519995744864e-05,
+      "balance_residual_kw_kvar": [
+        0.02306928912566164,
+        -0.006186175046451581
+      ]
+    },
+    {
+      "load_multiplier": 0.5,
+      "convergence_tolerance": 1e-06,
+      "converged": true,
+      "iterations": 5,
+      "solve_seconds": 7.299100025193184e-05,
+      "balance_residual_kw_kvar": [
+        9.460708599462464e-05,
+        -2.551301025732755e-05
+      ]
+    },
+    {
+      "load_multiplier": 0.5,
+      "convergence_tolerance": 1e-08,
+      "converged": true,
+      "iterations": 6,
+      "solve_seconds": 7.536400016761036e-05,
+      "balance_residual_kw_kvar": [
+        9.113039997288297e-06,
+        -1.5279474041562935e-06
+      ]
+    },
+    {
+      "load_multiplier": 0.5,
+      "convergence_tolerance": 1e-10,
+      "converged": true,
+      "iterations": 8,
+      "solve_seconds": 8.252499992522644e-05,
+      "balance_residual_kw_kvar": [
+        3.5969678862102228e-06,
+        -7.873765639487829e-09
+      ]
+    },
+    {
+      "load_multiplier": 1.0,
+      "convergence_tolerance": 0.0001,
+      "converged": true,
+      "iterations": 3,
+      "solve_seconds": 6.790299994463567e-05,
+      "balance_residual_kw_kvar": [
+        -0.05212919450099207,
+        0.018091905894095817
+      ]
+    },
+    {
+      "load_multiplier": 1.0,
+      "convergence_tolerance": 1e-06,
+      "converged": true,
+      "iterations": 6,
+      "solve_seconds": 7.77780001044448e-05,
+      "balance_residual_kw_kvar": [
+        -0.00019008106320939078,
+        2.755934133347182e-05
+      ]
+    },
+    {
+      "load_multiplier": 1.0,
+      "convergence_tolerance": 1e-08,
+      "converged": true,
+      "iterations": 8,
+      "solve_seconds": 8.109200007311301e-05,
+      "balance_residual_kw_kvar": [
+        -7.0130564182591115e-06,
+        2.6039589329229784e-07
+      ]
+    },
+    {
+      "load_multiplier": 1.0,
+      "convergence_tolerance": 1e-10,
+      "converged": true,
+      "iterations": 11,
+      "solve_seconds": 8.977600009529851e-05,
+      "balance_residual_kw_kvar": [
+        -3.4784875140303484e-06,
+        -1.1926886145374738e-09
+      ]
+    },
+    {
+      "load_multiplier": 1.25,
+      "convergence_tolerance": 0.0001,
+      "converged": true,
+      "iterations": 4,
+      "solve_seconds": 9.458299973630346e-05,
+      "balance_residual_kw_kvar": [
+        -0.06349548999639865,
+        0.01470239683442287
+      ]
+    },
+    {
+      "load_multiplier": 1.25,
+      "convergence_tolerance": 1e-06,
+      "converged": true,
+      "iterations": 7,
+      "solve_seconds": 7.63860002734873e-05,
+      "balance_residual_kw_kvar": [
+        -0.00040116691926073145,
+        9.540916073547123e-05
+      ]
+    },
+    {
+      "load_multiplier": 1.25,
+      "convergence_tolerance": 1e-08,
+      "converged": true,
+      "iterations": 10,
+      "solve_seconds": 8.818300011625979e-05,
+      "balance_residual_kw_kvar": [
+        -1.0885555184358964e-05,
+        6.456441496993648e-07
+      ]
+    },
+    {
+      "load_multiplier": 1.25,
+      "convergence_tolerance": 1e-10,
+      "converged": true,
+      "iterations": 12,
+      "solve_seconds": 9.169900022243382e-05,
+      "balance_residual_kw_kvar": [
+        -8.329017305186426e-06,
+        2.660260634002043e-08
+      ]
+    }
+  ],
+  "selected_convergence_passed": true,
+  "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4",
+  "protocol": {
+    "schema_version": 1,
+    "configuration": "ieee13-native-model-envelope-v1",
+    "frozen_date": "2026-09-28",
+    "purpose": "Published-voltage comparisons, declared native load-law envelopes, and numerical consistency are separate evidence categories.",
+    "published_inputs_protocol_sha256": "7648402dcbfc3b61ff183d2448922ec437bc9c08c02e838ee4796b3334267774",
+    "native_model_sha256": "e78ad86910eb7e03de4cc09dbffdb508061a2030617e4e928ba16674e983adae",
+    "convergence_tolerance": 1e-08,
+    "published_voltage_tolerance_pu": 0.003,
+    "power_numeric_allowance_kw_kvar": 0.05,
+    "current_numeric_allowance_a": 0.1,
+    "balance_tolerance_kw_kvar": 0.05,
+    "tolerance_basis": "Propagate the existing 0.003 pu published-voltage allowance through the declared load law before comparison. Retain the original 0.05 kW/kvar numeric and balance allowances and 0.1 A current floor. Do not fit tolerances to the new output residuals.",
+    "load_model": {
+      "model": 1,
+      "phases": 1,
+      "connection": "wye",
+      "vminpu": 0.95,
+      "vmaxpu": 1.05,
+      "rated_phase_kv": {
+        "634a": 0.277,
+        "634b": 0.277,
+        "634c": 0.277,
+        "645": 2.4,
+        "675a": 2.4,
+        "675b": 2.4,
+        "675c": 2.4
+      }
+    },
+    "sensitivity": {
+      "convergence_tolerances": [
+        0.0001,
+        1e-06,
+        1e-08,
+        1e-10
+      ],
+      "load_multipliers": [
+        0.5,
+        1.0,
+        1.25
+      ]
+    },
+    "scope": "No native load parameters or voltage limits are changed. The envelope is an analytical prediction conditioned on published voltage and declared native Model=1 behavior, not independent measured P/Q or current data. Numerical balance is internal consistency, not field validation. No restoration/protection validation is implied.",
+    "documentation": "https://dss-extensions.org/dss-format/Load.html"
+  },
+  "scope": "No native load parameters or voltage limits are changed. The envelope is an analytical prediction conditioned on published voltage and declared native Model=1 behavior, not independent measured P/Q or current data. Numerical balance is internal consistency, not field validation. No restoration/protection validation is implied.",
+  "original_pq_comparison": "Preserved separately; this configuration does not turn the original four mismatches into passed checks.",
+  "verified_at": "2026-10-12T13:29:12.611649+00:00",
+  "protocol_sha256": "a49079a4db4d819c48bd8807357c92a53fd3cb57eb3f1487fa7dd4f2a6eadeb5",
+  "checker_sha256": "7a9a920bf921c0696b04134ecc547089d30a8b25ce24e9edf92697705240d16b",
+  "runner_sha256": "a3af25627a01981e71d37bee97ab3ad2cc9f30b7f22f3794ec3480a480a0caa4"
+}

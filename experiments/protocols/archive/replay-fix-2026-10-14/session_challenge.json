@@ -1,0 +1,656 @@
+{
+  "control": {
+    "max_operations": 3,
+    "evaluation_budget": 2048,
+    "confirmation_timeout_s": 3,
+    "max_attempts_per_position": 2,
+    "max_commands": 24,
+    "max_decisions": 32,
+    "replan_interval_s": 2,
+    "auto_return_normal": true,
+    "planning_timing": {
+      "actuation_delay_s": 1,
+      "confirmation_delay_s": 0,
+      "energy_horizon_s": 10
+    }
+  },
+  "measurements": {
+    "period_s": 1,
+    "latency_s": 0,
+    "fresh_for_s": 2,
+    "initial_uncertainty_pct": 10,
+    "uncertainty_growth_pct_per_s": 2,
+    "maximum_uncertainty_pct": 80
+  },
+  "policies": [
+    "off",
+    "nominal",
+    "guarded"
+  ],
+  "name": "Internal paired restoration boundary challenge",
+  "scope": "Inspected synthetic engineering cases, not an external or unseen holdout",
+  "horizon_s": 16,
+  "execution_order": "case order then off/nominal/guarded; sequential single-host timings are descriptive",
+  "cases": [
+    {
+      "id": "healthy-control",
+      "pair": "healthy",
+      "rationale": "Negative control: no disturbances or restoration needed",
+      "events": []
+    },
+    {
+      "id": "confirmation-deadline-2",
+      "pair": "confirmation-deadline",
+      "rationale": "Actuation takes one second; feedback arrives exactly at timeout 3 or one second later; duplicates retained",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 8,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_b",
+          "feedback_delay_s": 2,
+          "duplicates": 2
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_c",
+          "feedback_delay_s": 2,
+          "duplicates": 2
+        }
+      ]
+    },
+    {
+      "id": "confirmation-deadline-3",
+      "pair": "confirmation-deadline",
+      "rationale": "Actuation takes one second; feedback arrives exactly at timeout 3 or one second later; duplicates retained",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 8,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_b",
+          "feedback_delay_s": 3,
+          "duplicates": 2
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_c",
+          "feedback_delay_s": 3,
+          "duplicates": 2
+        }
+      ]
+    },
+    {
+      "id": "position-freshness-2",
+      "pair": "position-freshness",
+      "rationale": "Position rows at freshness limit 2 seconds versus one second beyond",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "transport",
+          "at_s": 1,
+          "equipment": "line:tie_b",
+          "latency_s": 2,
+          "drop": false
+        },
+        {
+          "kind": "transport",
+          "at_s": 1,
+          "equipment": "line:tie_c",
+          "latency_s": 2,
+          "drop": false
+        }
+      ]
+    },
+    {
+      "id": "position-freshness-3",
+      "pair": "position-freshness",
+      "rationale": "Position rows at freshness limit 2 seconds versus one second beyond",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "transport",
+          "at_s": 1,
+          "equipment": "line:tie_b",
+          "latency_s": 3,
+          "drop": false
+        },
+        {
+          "kind": "transport",
+          "at_s": 1,
+          "equipment": "line:tie_c",
+          "latency_s": 3,
+          "drop": false
+        }
+      ]
+    },
+    {
+      "id": "refault-order-5",
+      "pair": "refault-order",
+      "rationale": "Same-time repair/refault versus refault during the return sequence",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "outage",
+          "at_s": 5,
+          "incident_id": "again",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        }
+      ]
+    },
+    {
+      "id": "refault-order-6",
+      "pair": "refault-order",
+      "rationale": "Same-time repair/refault versus refault during the return sequence",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "outage",
+          "at_s": 6,
+          "incident_id": "again",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        }
+      ]
+    },
+    {
+      "id": "overlap-clearance-6",
+      "pair": "overlap-clearance",
+      "rationale": "Repairing the first incident must not clear the second; late repair has no remaining energy interval",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "outage",
+          "at_s": 2,
+          "incident_id": "other",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "repair",
+          "at_s": 6,
+          "incident_id": "other"
+        }
+      ]
+    },
+    {
+      "id": "overlap-clearance-16",
+      "pair": "overlap-clearance",
+      "rationale": "Repairing the first incident must not clear the second; late repair has no remaining energy interval",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "outage",
+          "at_s": 2,
+          "incident_id": "other",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "repair",
+          "at_s": 16,
+          "incident_id": "other"
+        }
+      ]
+    },
+    {
+      "id": "recovery-demand-1.3",
+      "pair": "recovery-demand",
+      "rationale": "Demand changes during recovery; fixed stress levels are not certified electrical thresholds",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "demand",
+          "at_s": 6,
+          "feeder": "a",
+          "factor": 1.3
+        }
+      ]
+    },
+    {
+      "id": "recovery-demand-1.5",
+      "pair": "recovery-demand",
+      "rationale": "Demand changes during recovery; fixed stress levels are not certified electrical thresholds",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "demand",
+          "at_s": 6,
+          "feeder": "a",
+          "factor": 1.5
+        }
+      ]
+    },
+    {
+      "id": "donor-demand-1.7",
+      "pair": "donor-demand",
+      "rationale": "Two prespecified donor-demand stress levels, preserving any initial violation",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 8,
+          "incident_id": "trip"
+        }
+      ],
+      "initial_factors": {
+        "a": 1,
+        "b": 1.7,
+        "c": 1.7
+      }
+    },
+    {
+      "id": "donor-demand-1.9",
+      "pair": "donor-demand",
+      "rationale": "Two prespecified donor-demand stress levels, preserving any initial violation",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 8,
+          "incident_id": "trip"
+        }
+      ],
+      "initial_factors": {
+        "a": 1,
+        "b": 1.9,
+        "c": 1.9
+      }
+    },
+    {
+      "id": "native-budget-14",
+      "pair": "native-budget",
+      "rationale": "Adjacent solve budgets around one 15-sample guarded assessment; nominal receives the same call cap",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ],
+      "control": {
+        "evaluation_budget": 14
+      }
+    },
+    {
+      "id": "native-budget-15",
+      "pair": "native-budget",
+      "rationale": "Adjacent solve budgets around one 15-sample guarded assessment; nominal receives the same call cap",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ],
+      "control": {
+        "evaluation_budget": 15
+      }
+    },
+    {
+      "id": "command-cap-1",
+      "pair": "command-cap",
+      "rationale": "Stopping after one versus two issued operations; unfinished recovery remains visible",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ],
+      "control": {
+        "max_commands": 1
+      }
+    },
+    {
+      "id": "command-cap-2",
+      "pair": "command-cap",
+      "rationale": "Stopping after one versus two issued operations; unfinished recovery remains visible",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ],
+      "control": {
+        "max_commands": 2
+      }
+    },
+    {
+      "id": "decision-cap-1",
+      "pair": "decision-cap",
+      "rationale": "One versus two planning decisions across disturbance and recovery",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ],
+      "control": {
+        "max_decisions": 1
+      }
+    },
+    {
+      "id": "decision-cap-2",
+      "pair": "decision-cap",
+      "rationale": "One versus two planning decisions across disturbance and recovery",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ],
+      "control": {
+        "max_decisions": 2
+      }
+    },
+    {
+      "id": "source-end-repair-15",
+      "pair": "source-end-repair",
+      "rationale": "Repair just before versus at the horizon; source/transformer availability is necessary for downstream service",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "source",
+          "equipment": "source"
+        },
+        {
+          "kind": "repair",
+          "at_s": 15,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "source-end-repair-16",
+      "pair": "source-end-repair",
+      "rationale": "Repair just before versus at the horizon; source/transformer availability is necessary for downstream service",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "source",
+          "equipment": "source"
+        },
+        {
+          "kind": "repair",
+          "at_s": 16,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "transformer-end-repair-15",
+      "pair": "transformer-end-repair",
+      "rationale": "Repair just before versus at the horizon; source/transformer availability is necessary for downstream service",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "transformer",
+          "equipment": "tx_a1"
+        },
+        {
+          "kind": "repair",
+          "at_s": 15,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "transformer-end-repair-16",
+      "pair": "transformer-end-repair",
+      "rationale": "Repair just before versus at the horizon; source/transformer availability is necessary for downstream service",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "transformer",
+          "equipment": "tx_a1"
+        },
+        {
+          "kind": "repair",
+          "at_s": 16,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "feedback-loss-false",
+      "pair": "feedback-loss",
+      "rationale": "Physical operation with or without delivered confirmation; status must not infer confirmation",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_b",
+          "drop_feedback": false
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_c",
+          "drop_feedback": false
+        }
+      ]
+    },
+    {
+      "id": "feedback-loss-true",
+      "pair": "feedback-loss",
+      "rationale": "Physical operation with or without delivered confirmation; status must not infer confirmation",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_b",
+          "drop_feedback": true
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_c",
+          "drop_feedback": true
+        }
+      ]
+    }
+  ]
+}

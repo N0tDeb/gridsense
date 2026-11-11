@@ -1,0 +1,323 @@
+"""Budgeted session planning from received load estimates and device status only."""
+
+from collections import deque
+from copy import deepcopy
+from itertools import product
+
+from dss import DSSException
+
+from .domain import CircuitState, EquipmentOutage, Record
+from .electrical import ElectricalEngine, InvalidSwitching
+from .network import load_network
+from .switching import (
+    SwitchOperation,
+    change_position,
+    device_positions,
+    normal_positions,
+    position_key,
+)
+
+OBJECTIVE = "Feasible critical kW, then total kW, then fewer operations and lower worst tested loading; kW rounded to 0.1, deterministic operation-key ties."
+
+
+class PlanningView(Record):
+    at_s: int
+    state: CircuitState
+    demand_kw: dict[str, float]
+    bounds_kw: dict[str, tuple[float, float]]
+    evidence: dict
+
+
+def planning_view(observation, network=None):
+    network = network or load_network()
+    signals = {r["sensor_id"]: r for r in observation["signals"]}
+    positions, outages, evidence = {}, [], {}
+    template = CircuitState(load_factors={"a": 1, "b": 1, "c": 1}, closed_lines=(), locked_open=())
+    for asset in sorted(device_positions(template, network)):
+        rows = [signals.get(asset + "/" + q) for q in ("available", "closed")]
+        if any(r is None or not r["fresh"] or type(r["value"]) is not bool for r in rows):
+            raise ValueError("Fresh availability and position are required for " + asset)
+        if rows[0]["measured_at_s"] != rows[1]["measured_at_s"]:
+            raise ValueError("Availability and position timestamps disagree for " + asset)
+        available, closed = (r["value"] for r in rows)
+        if not available and closed:
+            raise ValueError("Received unavailable equipment is reported closed: " + asset)
+        positions[asset] = closed
+        evidence[asset] = rows
+        if not available:
+            kind, name = asset.split(":", 1)
+            outages.append(
+                EquipmentOutage(incident_id="observed-" + asset, kind=kind, equipment=name)
+            )
+    demand, bounds = {}, {}
+    estimates = {r["load_id"]: r for r in observation["demand_estimates"]}
+    for load in network["loads"]:
+        row = estimates.get(load["id"])
+        if row is None or row["kw"] is None or row["kw"] <= 0:
+            raise ValueError("A valid prior demand estimate is required for " + load["id"])
+        demand[load["id"]] = row["kw"]
+        bounds[load["id"]] = (row["lower_kw"], row["upper_kw"])
+    state = template.model_copy(
+        update={
+            "closed_lines": tuple(
+                sorted(
+                    a.split(":", 1)[1]
+                    for a, closed in positions.items()
+                    if a.startswith("line:") and closed
+                )
+            ),
+            "open_transformers": tuple(
+                sorted(
+                    a.split(":", 1)[1]
+                    for a, closed in positions.items()
+                    if a.startswith("transformer:") and not closed
+                )
+            ),
+            "source_connected": positions["source:" + network["source_bus"]],
+            "equipment_outages": tuple(outages),
+        }
+    )
+    return PlanningView(
+        at_s=observation["at_s"],
+        state=state,
+        demand_kw=demand,
+        bounds_kw=bounds,
+        evidence={"device_rows": evidence, "demand_estimates": observation["demand_estimates"]},
+    )
+
+
+def demand_samples(view, policy):
+    samples = [dict(view.demand_kw)]
+    if policy == "guarded":
+        for key in sorted(view.demand_kw):
+            for value in view.bounds_kw[key]:
+                samples.append({**view.demand_kw, key: value})
+        samples.extend(
+            {key: value[index] for key, value in view.bounds_kw.items()} for index in (0, 1)
+        )
+    return list({tuple(sorted(s.items())): s for s in samples}.values())
+
+
+class BudgetExhausted(Exception):
+    pass
+
+
+class Predictor:
+    """Cache native states within one decision and restore the caller's model."""
+
+    def __init__(self, view, policy, budget, engine=None, network=None, samples=None):
+        self.view = view
+        self.network = network or load_network()
+        self.samples = demand_samples(view, policy) if samples is None else samples
+        self.budget, self.solves = budget, 0
+        self.engine = engine or ElectricalEngine(self.network)
+        self.cache = {}
+
+    def evaluate(self, state):
+        key = position_key(state, self.network)
+        if key in self.cache:
+            return self.cache[key]
+        outcomes = []
+        for demand in self.samples:
+            if self.solves >= self.budget:
+                raise BudgetExhausted
+            model = deepcopy(self.network)
+            for load in model["loads"]:
+                load["kw"] = demand[load["id"]]
+            previous = self.engine.network
+            self.engine.network = model
+            self.solves += 1
+            try:
+                result = self.engine.solve(state)
+                outcomes.append(
+                    {
+                        "feasible": result.feasible,
+                        "converged": result.converged,
+                        "critical_kw": result.critical_served_kw,
+                        "served_kw": result.served_kw,
+                        "loading_pct": result.max_loading_pct,
+                        "min_voltage_pu": result.min_voltage_pu,
+                        "violations": [r.model_dump(mode="json") for r in result.violations],
+                    }
+                )
+            except (InvalidSwitching, DSSException) as exc:
+                outcomes.append(
+                    {
+                        "feasible": False,
+                        "converged": False,
+                        "critical_kw": None,
+                        "served_kw": None,
+                        "loading_pct": None,
+                        "min_voltage_pu": None,
+                        "violations": [{"kind": "model", "message": str(exc)}],
+                    }
+                )
+            finally:
+                self.engine.network = previous
+            if not outcomes[-1]["feasible"]:
+                break
+        summary = {
+            "nominal": outcomes[0],
+            "feasible": all(r["feasible"] for r in outcomes) and len(outcomes) == len(self.samples),
+            "samples_checked": len(outcomes),
+            "samples_required": len(self.samples),
+            "worst_loading_pct": max(
+                (r["loading_pct"] for r in outcomes if r["loading_pct"] is not None), default=None
+            ),
+            "violations": [v for r in outcomes for v in r["violations"]],
+        }
+        self.cache[key] = summary
+        return summary
+
+
+def choices(state, network, used=(), blocked=()):
+    unavailable = {o.kind + ":" + o.equipment for o in state.equipment_outages}
+    result = []
+    for asset, closed in sorted(device_positions(state, network).items()):
+        if asset in used or asset in unavailable or (not asset.startswith("line:") and closed):
+            continue
+        operation = SwitchOperation(equipment=asset, closed=not closed)
+        if operation.key not in blocked:
+            result.append(operation)
+    return result
+
+
+def rank(candidate):
+    nominal = candidate["prediction"]["nominal"]
+    return (
+        -round(nominal["critical_kw"], 1),
+        -round(nominal["served_kw"], 1),
+        len(candidate["operations"]),
+        candidate["prediction"]["worst_loading_pct"],
+        tuple(
+            r["equipment"] + (":close" if r["closed"] else ":open") for r in candidate["operations"]
+        ),
+    )
+
+
+def plan(
+    view,
+    policy,
+    *,
+    budget=2048,
+    max_operations=3,
+    engine=None,
+    goal="restore",
+    blocked=(),
+    forbidden=(),
+):
+    """Breadth-first reachable feasible states, with native evaluation budget."""
+    network = load_network()
+    predictor = Predictor(view, policy, budget, engine, network)
+    candidates, rejected, visited = [], [], set()
+    queue = deque([(view.state, ())])
+    exhausted = False
+    normal = tuple(sorted(normal_positions(network).items()))
+    forbidden = set(forbidden)
+    while queue:
+        state, operations = queue.popleft()
+        key = position_key(state, network)
+        if key in visited:
+            continue
+        try:
+            predicted = predictor.evaluate(state)
+        except BudgetExhausted:
+            exhausted = True
+            break
+        visited.add(key)
+        candidate = {
+            "operations": [o.model_dump(mode="json") for o in operations],
+            "prediction": predicted,
+            "normal_configuration": key == normal,
+            "known_unsafe": key in forbidden,
+        }
+        candidates.append(candidate)
+        if len(operations) >= max_operations or (
+            operations and (not predicted["feasible"] or key in forbidden)
+        ):
+            continue
+        for operation in choices(state, network, {o.equipment for o in operations}, blocked):
+            try:
+                changed = change_position(state, operation, network)
+            except ValueError as exc:
+                if len(rejected) < 24:
+                    rejected.append(
+                        {"operation": operation.model_dump(mode="json"), "reason": str(exc)}
+                    )
+                continue
+            # Stable breadth-first order retains the shortest lexicographically
+            # first feasible path when several paths reach the same position.
+            queue.append((changed, (*operations, operation)))
+    feasible = [c for c in candidates if c["prediction"]["feasible"] and not c["known_unsafe"]]
+    hold = next((c for c in candidates if not c["operations"]), None)
+    if goal == "normal":
+        base = hold["prediction"]["nominal"] if hold else {}
+        feasible = [
+            c
+            for c in feasible
+            if c["normal_configuration"]
+            and c["prediction"]["nominal"]["critical_kw"] + 0.1 >= (base.get("critical_kw") or 0)
+            and c["prediction"]["nominal"]["served_kw"] + 0.1 >= (base.get("served_kw") or 0)
+        ]
+    selected = min(feasible, key=rank) if feasible else hold
+    success = bool(feasible)
+    reason = (
+        (
+            "Checked return to normal with no predicted terminal service loss"
+            if goal == "normal"
+            else "Best feasible service among evaluated bounded plans"
+        )
+        if success
+        else "No checked plan satisfies the requested goal; hold and inspect the recorded constraints"
+    )
+    if exhausted:
+        reason += "; native evaluation budget exhausted"
+    return {
+        "goal": goal,
+        "policy": policy,
+        "objective": OBJECTIVE,
+        "reason": reason,
+        "selected": selected,
+        "feasible_choice": success,
+        "candidates": candidates,
+        "structural_rejections": rejected,
+        "budget": budget,
+        "native_evaluations": predictor.solves,
+        "budget_exhausted": exhausted,
+        "max_operations": max_operations,
+        "uncertainty_samples": predictor.samples,
+        "input": view.model_dump(mode="json"),
+    }
+
+
+def check_sequence(view, operations, policy, *, budget=2048, engine=None, forbidden=()):
+    predictor = Predictor(view, policy, budget, engine)
+    state, steps, reason = view.state, [], None
+    try:
+        for operation in operations:
+            state = change_position(state, operation, predictor.network)
+            result = predictor.evaluate(state)
+            steps.append(result)
+            if not result["feasible"] or position_key(state, predictor.network) in set(forbidden):
+                reason = "Remaining sequence is no longer predicted feasible or was observed unsafe"
+                break
+    except (ValueError, BudgetExhausted) as exc:
+        reason = str(exc) or "Native evaluation budget exhausted during revalidation"
+    return {
+        "feasible": reason is None and len(steps) == len(operations),
+        "reason": reason,
+        "steps": steps,
+        "native_evaluations": predictor.solves,
+    }
+
+
+def dense_samples(view, levels=(0.0, 0.5, 1.0)):
+    """Finite joint reference grid, not a proof over a continuous uncertainty box."""
+    keys = sorted(view.bounds_kw)
+    return [
+        {
+            k: view.bounds_kw[k][0] + fraction * (view.bounds_kw[k][1] - view.bounds_kw[k][0])
+            for k, fraction in zip(keys, fractions, strict=True)
+        }
+        for fractions in product(levels, repeat=len(keys))
+    ]

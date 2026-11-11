@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "frozen_date": "2026-09-22",
+  "source_url": "https://sites.ecse.rpi.edu/~vanfrl/documents/mscthesis/2018_Marcelo_Thesis.pdf",
+  "author": "Marcelo de Castro Fernandes",
+  "title": "Modeling and Simulation of Integrated Transmisson and Distribution Systems to Assess the Impacts of Distributed Energy Resources",
+  "year_on_cover": 2017,
+  "provenance_note": "Filename says 2018; cover and catalogue say 2017. Tables visually checked. Existing archived voltage-reference metadata remains byte-exact for replay compatibility.",
+  "tables": {"voltage": "Table 13, printed page 51, Official Results column", "transformer": "Table 18, printed page 72", "load_power": "Table 21, printed page 73"},
+  "interpretation": "Expected current is analytically derived from independently published P, Q and phase voltage, not a published current result. Constant-PQ wye loads only. No restoration ties in this reference circuit.",
+  "current_formula": "hypot(P_kW,Q_kvar)/(voltage_pu * base_LL_kV/sqrt(3))",
+  "current_relative_tolerance": 0.01,
+  "current_absolute_floor_a": 0.1,
+  "power_tolerance_kw_kvar": 0.05,
+  "loading_tolerance_percentage_points": 1.0,
+  "balance_tolerance_kw_kvar": 0.05,
+  "tolerance_reason": "Frozen before observing these outputs. A 1% current allowance covers rounded reference voltages and disclosed model differences; 0.05 kW/kvar for constant-power and internal balance checks is a numerical allowance, not an operational standard.",
+  "xfm1": {"kva": 500, "lv_ll_kv": 0.48},
+  "loads": [
+    {"name": "634a", "phase": 1, "kw": 160, "kvar": 110, "voltage_pu": 0.9940, "base_ll_kv": 0.48},
+    {"name": "634b", "phase": 2, "kw": 120, "kvar": 90, "voltage_pu": 1.0218, "base_ll_kv": 0.48},
+    {"name": "634c", "phase": 3, "kw": 120, "kvar": 90, "voltage_pu": 0.9960, "base_ll_kv": 0.48},
+    {"name": "645", "phase": 2, "kw": 170, "kvar": 125, "voltage_pu": 1.0329, "base_ll_kv": 4.16},
+    {"name": "675a", "phase": 1, "kw": 485, "kvar": 190, "voltage_pu": 0.9835, "base_ll_kv": 4.16},
+    {"name": "675b", "phase": 2, "kw": 68, "kvar": 60, "voltage_pu": 1.0553, "base_ll_kv": 4.16},
+    {"name": "675c", "phase": 3, "kw": 290, "kvar": 212, "voltage_pu": 0.9758, "base_ll_kv": 4.16}
+  ]
+}

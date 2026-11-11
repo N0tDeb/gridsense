@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "configuration": "ieee13-constant-pq-reference-v1",
+  "native_model_sha256": "e78ad86910eb7e03de4cc09dbffdb508061a2030617e4e928ba16674e983adae",
+  "published_voltage_file_sha256": "44bd63ba5edbf8ab7a2f6d9b77008ec36017940f676a06c0472bbb24aed544f9",
+  "published_protocol_sha256": "7648402dcbfc3b61ff183d2448922ec437bc9c08c02e838ee4796b3334267774",
+  "convergence_tolerance": 1e-08,
+  "load_override": {
+    "name": "675b",
+    "model": 1,
+    "vminpu": 0.95,
+    "vmaxpu": 1.1,
+    "rated_phase_kv": 2.4,
+    "nominal_kw": 68.0,
+    "nominal_kvar": 60.0
+  },
+  "design": "Versioned configuration selected after diagnosing the original four mismatches; not blind or independent confirmatory evidence.",
+  "reason": "Keep the 675b load in its declared constant-PQ range for the frozen healthy-circuit PQ/current comparisons, and tighten solve convergence for internal power balance.",
+  "scope": "Healthy IEEE13 reference circuit only, without restoration ties. This profile is a different load-window configuration from native defaults. It does not change the production restoration model, reference targets or comparator tolerances. Derived currents and internal balances are not independent field measurements."
+}

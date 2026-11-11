@@ -1,0 +1,601 @@
+{
+  "schema_version": 1,
+  "experiment_id": "gridsense-native-reuse",
+  "frozen_at": "2026-10-12T15:20:04.972880+00:00",
+  "baseline_episode_sha256": "434203229037fc57b15049e9b0165fba47b4212a1abe90c063ac3a24d5fe3833",
+  "seed": 451007,
+  "scope": "Eight frozen synthetic planning inputs created before changing native reuse. Engineering comparison, not externally blinded or field-frequency evidence. Per-load means vary independently. Both implementations share the electrical adapter and objective.",
+  "budgets": [
+    192,
+    2048
+  ],
+  "cases": [
+    {
+      "id": "healthy",
+      "view": {
+        "at_s": 2,
+        "state": {
+          "load_factors": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 1.0
+          },
+          "closed_lines": [
+            "feed_a",
+            "feed_b",
+            "feed_c",
+            "seg_a",
+            "seg_b",
+            "seg_c"
+          ],
+          "locked_open": [],
+          "equipment_outages": [],
+          "open_transformers": [],
+          "source_connected": true
+        },
+        "demand_kw": {
+          "a1": 370.991,
+          "a2": 622.694,
+          "b1": 586.018,
+          "b2": 184.072,
+          "c1": 659.501,
+          "c2": 277.219
+        },
+        "bounds_kw": {
+          "a1": [
+            333.8919,
+            408.0901
+          ],
+          "a2": [
+            560.4245999999999,
+            684.9634
+          ],
+          "b1": [
+            527.4162,
+            644.6198
+          ],
+          "b2": [
+            165.6648,
+            202.47920000000002
+          ],
+          "c1": [
+            593.5509,
+            725.4511
+          ],
+          "c2": [
+            249.4971,
+            304.9409
+          ]
+        },
+        "evidence": {
+          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
+        },
+        "growth_pct_per_s": 0.0,
+        "maximum_uncertainty_pct": 100.0,
+        "remaining_horizon_s": 16,
+        "measured_overloads": [],
+        "unsafe_exposures": []
+      },
+      "max_operations": 2
+    },
+    {
+      "id": "trip-a",
+      "view": {
+        "at_s": 2,
+        "state": {
+          "load_factors": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 1.0
+          },
+          "closed_lines": [
+            "feed_b",
+            "feed_c",
+            "seg_a",
+            "seg_b",
+            "seg_c"
+          ],
+          "locked_open": [],
+          "equipment_outages": [
+            {
+              "incident_id": "frozen-trip",
+              "kind": "line",
+              "equipment": "feed_a"
+            }
+          ],
+          "open_transformers": [],
+          "source_connected": true
+        },
+        "demand_kw": {
+          "a1": 551.643,
+          "a2": 438.099,
+          "b1": 453.107,
+          "b2": 357.124,
+          "c1": 451.718,
+          "c2": 503.482
+        },
+        "bounds_kw": {
+          "a1": [
+            441.31440000000003,
+            661.9716
+          ],
+          "a2": [
+            350.4792,
+            525.7188
+          ],
+          "b1": [
+            362.48560000000003,
+            543.7284
+          ],
+          "b2": [
+            285.6992,
+            428.5488
+          ],
+          "c1": [
+            361.37440000000004,
+            542.0616
+          ],
+          "c2": [
+            402.78560000000004,
+            604.1784
+          ]
+        },
+        "evidence": {
+          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
+        },
+        "growth_pct_per_s": 2.0,
+        "maximum_uncertainty_pct": 100.0,
+        "remaining_horizon_s": 16,
+        "measured_overloads": [],
+        "unsafe_exposures": []
+      },
+      "max_operations": 3
+    },
+    {
+      "id": "trip-b",
+      "view": {
+        "at_s": 2,
+        "state": {
+          "load_factors": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 1.0
+          },
+          "closed_lines": [
+            "feed_a",
+            "feed_c",
+            "seg_a",
+            "seg_b",
+            "seg_c"
+          ],
+          "locked_open": [],
+          "equipment_outages": [
+            {
+              "incident_id": "frozen-trip",
+              "kind": "line",
+              "equipment": "feed_b"
+            }
+          ],
+          "open_transformers": [],
+          "source_connected": true
+        },
+        "demand_kw": {
+          "a1": 321.788,
+          "a2": 482.925,
+          "b1": 614.233,
+          "b2": 336.425,
+          "c1": 564.974,
+          "c2": 330.969
+        },
+        "bounds_kw": {
+          "a1": [
+            273.5198,
+            370.0562
+          ],
+          "a2": [
+            410.48625,
+            555.36375
+          ],
+          "b1": [
+            522.09805,
+            706.3679499999998
+          ],
+          "b2": [
+            285.96125,
+            386.88874999999996
+          ],
+          "c1": [
+            480.22790000000003,
+            649.7201
+          ],
+          "c2": [
+            281.32365,
+            380.61434999999994
+          ]
+        },
+        "evidence": {
+          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
+        },
+        "growth_pct_per_s": 0.0,
+        "maximum_uncertainty_pct": 100.0,
+        "remaining_horizon_s": 16,
+        "measured_overloads": [],
+        "unsafe_exposures": []
+      },
+      "max_operations": 3
+    },
+    {
+      "id": "trip-c",
+      "view": {
+        "at_s": 2,
+        "state": {
+          "load_factors": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 1.0
+          },
+          "closed_lines": [
+            "feed_a",
+            "feed_b",
+            "seg_a",
+            "seg_b",
+            "seg_c"
+          ],
+          "locked_open": [],
+          "equipment_outages": [
+            {
+              "incident_id": "frozen-trip",
+              "kind": "line",
+              "equipment": "feed_c"
+            }
+          ],
+          "open_transformers": [],
+          "source_connected": true
+        },
+        "demand_kw": {
+          "a1": 305.35,
+          "a2": 635.624,
+          "b1": 651.976,
+          "b2": 186.542,
+          "c1": 550.521,
+          "c2": 348.194
+        },
+        "bounds_kw": {
+          "a1": [
+            229.01250000000002,
+            381.6875
+          ],
+          "a2": [
+            476.718,
+            794.53
+          ],
+          "b1": [
+            488.98199999999997,
+            814.97
+          ],
+          "b2": [
+            139.9065,
+            233.1775
+          ],
+          "c1": [
+            412.89074999999997,
+            688.1512499999999
+          ],
+          "c2": [
+            261.1455,
+            435.2425
+          ]
+        },
+        "evidence": {
+          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
+        },
+        "growth_pct_per_s": 2.0,
+        "maximum_uncertainty_pct": 100.0,
+        "remaining_horizon_s": 16,
+        "measured_overloads": [],
+        "unsafe_exposures": []
+      },
+      "max_operations": 3
+    },
+    {
+      "id": "shed-b2",
+      "view": {
+        "at_s": 2,
+        "state": {
+          "load_factors": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 1.0
+          },
+          "closed_lines": [
+            "feed_a",
+            "feed_b",
+            "feed_c",
+            "seg_a",
+            "seg_b",
+            "seg_c"
+          ],
+          "locked_open": [],
+          "equipment_outages": [],
+          "open_transformers": [
+            "tx_b2"
+          ],
+          "source_connected": true
+        },
+        "demand_kw": {
+          "a1": 319.946,
+          "a2": 490.692,
+          "b1": 491.819,
+          "b2": 325.828,
+          "c1": 625.137,
+          "c2": 403.86
+        },
+        "bounds_kw": {
+          "a1": [
+            223.9622,
+            415.92980000000006
+          ],
+          "a2": [
+            343.4844,
+            637.8996000000001
+          ],
+          "b1": [
+            344.2733,
+            639.3647000000001
+          ],
+          "b2": [
+            228.07959999999997,
+            423.5764
+          ],
+          "c1": [
+            437.5958999999999,
+            812.6781
+          ],
+          "c2": [
+            282.702,
+            525.018
+          ]
+        },
+        "evidence": {
+          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
+        },
+        "growth_pct_per_s": 0.0,
+        "maximum_uncertainty_pct": 100.0,
+        "remaining_horizon_s": 16,
+        "measured_overloads": [],
+        "unsafe_exposures": []
+      },
+      "max_operations": 3
+    },
+    {
+      "id": "alternate-c",
+      "view": {
+        "at_s": 2,
+        "state": {
+          "load_factors": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 1.0
+          },
+          "closed_lines": [
+            "feed_b",
+            "feed_c",
+            "seg_a",
+            "seg_b",
+            "seg_c",
+            "tie_c"
+          ],
+          "locked_open": [],
+          "equipment_outages": [
+            {
+              "incident_id": "frozen-trip",
+              "kind": "line",
+              "equipment": "feed_a"
+            }
+          ],
+          "open_transformers": [
+            "tx_c2"
+          ],
+          "source_connected": true
+        },
+        "demand_kw": {
+          "a1": 549.73,
+          "a2": 558.294,
+          "b1": 403.406,
+          "b2": 186.728,
+          "c1": 521.226,
+          "c2": 272.398
+        },
+        "bounds_kw": {
+          "a1": [
+            439.78400000000005,
+            659.676
+          ],
+          "a2": [
+            446.6352,
+            669.9527999999999
+          ],
+          "b1": [
+            322.7248,
+            484.0872
+          ],
+          "b2": [
+            149.38240000000002,
+            224.0736
+          ],
+          "c1": [
+            416.98080000000004,
+            625.4712
+          ],
+          "c2": [
+            217.91840000000002,
+            326.87760000000003
+          ]
+        },
+        "evidence": {
+          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
+        },
+        "growth_pct_per_s": 2.0,
+        "maximum_uncertainty_pct": 100.0,
+        "remaining_horizon_s": 16,
+        "measured_overloads": [],
+        "unsafe_exposures": []
+      },
+      "max_operations": 3
+    },
+    {
+      "id": "source-open",
+      "view": {
+        "at_s": 2,
+        "state": {
+          "load_factors": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 1.0
+          },
+          "closed_lines": [
+            "feed_a",
+            "feed_b",
+            "feed_c",
+            "seg_a",
+            "seg_b",
+            "seg_c"
+          ],
+          "locked_open": [],
+          "equipment_outages": [
+            {
+              "incident_id": "frozen-source",
+              "kind": "source",
+              "equipment": "source"
+            }
+          ],
+          "open_transformers": [],
+          "source_connected": false
+        },
+        "demand_kw": {
+          "a1": 428.308,
+          "a2": 719.484,
+          "b1": 564.51,
+          "b2": 326.806,
+          "c1": 385.255,
+          "c2": 386.108
+        },
+        "bounds_kw": {
+          "a1": [
+            278.4002,
+            578.2158000000001
+          ],
+          "a2": [
+            467.66460000000006,
+            971.3034000000001
+          ],
+          "b1": [
+            366.9315,
+            762.0885000000001
+          ],
+          "b2": [
+            212.4239,
+            441.1881
+          ],
+          "c1": [
+            250.41575,
+            520.09425
+          ],
+          "c2": [
+            250.9702,
+            521.2458
+          ]
+        },
+        "evidence": {
+          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
+        },
+        "growth_pct_per_s": 0.0,
+        "maximum_uncertainty_pct": 100.0,
+        "remaining_horizon_s": 16,
+        "measured_overloads": [],
+        "unsafe_exposures": []
+      },
+      "max_operations": 2
+    },
+    {
+      "id": "trip-a-tight",
+      "view": {
+        "at_s": 2,
+        "state": {
+          "load_factors": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 1.0
+          },
+          "closed_lines": [
+            "feed_b",
+            "feed_c",
+            "seg_a",
+            "seg_b",
+            "seg_c"
+          ],
+          "locked_open": [],
+          "equipment_outages": [
+            {
+              "incident_id": "frozen-trip",
+              "kind": "line",
+              "equipment": "feed_a"
+            }
+          ],
+          "open_transformers": [],
+          "source_connected": true
+        },
+        "demand_kw": {
+          "a1": 465.708,
+          "a2": 536.29,
+          "b1": 527.891,
+          "b2": 299.103,
+          "c1": 375.007,
+          "c2": 393.486
+        },
+        "bounds_kw": {
+          "a1": [
+            442.4226,
+            488.99340000000007
+          ],
+          "a2": [
+            509.47549999999995,
+            563.1045
+          ],
+          "b1": [
+            501.4964499999999,
+            554.28555
+          ],
+          "b2": [
+            284.14785,
+            314.05815
+          ],
+          "c1": [
+            356.25665,
+            393.75735000000003
+          ],
+          "c2": [
+            373.8117,
+            413.1603
+          ]
+        },
+        "evidence": {
+          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
+        },
+        "growth_pct_per_s": 2.0,
+        "maximum_uncertainty_pct": 100.0,
+        "remaining_horizon_s": 16,
+        "measured_overloads": [],
+        "unsafe_exposures": []
+      },
+      "max_operations": 3
+    }
+  ],
+  "comparison_tolerance": 1e-07,
+  "acceptance": [
+    "Disconnected requested demand remains in every returned requested_kw.",
+    "Reconnection, connected demand, topology and projected uncertainty remain checked.",
+    "Complete searches agree with the full-demand reference within numerical tolerance.",
+    "Retain all budget-exhausted, infeasible and differing choices; do not filter results."
+  ]
+}

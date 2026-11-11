@@ -1,0 +1,9 @@
+{
+  "frozen_at": "2026-10-12T15:30:16.741172+00:00",
+  "fingerprints": {
+    "episode_sha256": "df46688afe72556e32a34280085c8ee425eb2bbbb586bc2377ac4e8f6370836c",
+    "protocol_sha256": "0a8323971019694d205951ea945ec34f47ec73e8aa67af0fe05fb804835aeb12",
+    "runner_sha256": "c8b6d5fdf26a477130adccbc85c2bf20f0cf14c85096b4e271b72e7ca155194f",
+    "reference_sha256": "a052aa6a6bace3d73ecb7c9a27eb8dddd9a307bdf442b76a2cf15cc20ee86516"
+  }
+}

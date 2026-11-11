@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "purpose": "Fixed-seed search and controller evaluation with paired uncertainty intervals and measured adapter costs.",
+  "search_seeds": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107
+  ],
+  "search_budget_per_method": 16,
+  "reduction_seeds": [
+    100
+  ],
+  "reduction_budget": 24,
+  "controller_seeds": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "controller_points_per_seed_group": 8,
+  "bootstrap_seed": 734,
+  "bootstrap_samples": 10000,
+  "controller_groups": [
+    [
+      "teaching",
+      "feed_a"
+    ],
+    [
+      "teaching",
+      "seg_a"
+    ],
+    [
+      "ieee13",
+      "632670"
+    ],
+    [
+      "ieee13",
+      "671692"
+    ]
+  ],
+  "core_sha256": "89044955ffc19431f697a3c30bcb04c59b00efcb0457d50ef9130c6ffc4f4d72",
+  "search_sha256": "f3686299242ff174c6fcf5a9f4bbf8a486a04d10d23a07eea7942ceb3bcc2f69",
+  "policy": "No controller, search, uncertainty-bound or service-threshold tuning using these results. Retain all seeds, no-hit runs and physically unattainable cases. These previously inspected cases use known small feeder models, not an external blind holdout.",
+  "metrics": "Paired capped first-failure trials (no hit = budget+1), hit rate, measured electrical-adapter solve calls, search runtime, separately budgeted reduction and strict replay. Controller results retain all-case and initially-feasible/truth-attainable denominators. Bootstrap resamples whole paired seeds, never individual correlated trials. Intervals describe this sampling protocol, not field risk.",
+  "harness_sha256": "d34e5731004bcbb04b54a814d405d74a71109a46a230c76c0aff6981b86c4839",
+  "frozen_at": "2026-09-21T17:52:42.553924+00:00",
+  "protocol_revision": 5,
+  "implementation_pinned_at": "2026-10-14T17:24:25.659275+00:00",
+  "implementation_pin_reason": "Shared replay comparator rejects non-finite values and Boolean/numeric type mismatches. Electrical models, cases, seeds, budgets, variants, tolerances and analysis settings unchanged; actual rerun under new source.",
+  "experiment_id": "gridsense-quality-0.4.3-replay-integrity-20261014"
+}

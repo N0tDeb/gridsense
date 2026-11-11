@@ -1,0 +1,863 @@
+{
+  "schema_version": 1,
+  "kind": "temporal",
+  "id": "4e781c39-57b4-4768-ac75-fc05fb078480",
+  "created_at": "2026-10-14T17:35:45.962970+00:00",
+  "request": {
+    "seed": 42,
+    "budget": 4,
+    "reduction_budget": 24,
+    "timeout_s": 5,
+    "case": {
+      "schema_version": 1,
+      "title": "Failed tie closure with delayed position feedback",
+      "feeder": "teaching",
+      "fault": "feed_a",
+      "scenario": {
+        "title": "Stale west-feeder telemetry",
+        "load_a": 1.0,
+        "load_b": 0.7,
+        "load_c": 1.1,
+        "reported_b": 0.7,
+        "telemetry_age_s": 0,
+        "uncertainty_pct": 0.0,
+        "policy": "guarded"
+      },
+      "contract": {
+        "minimum_restored_kw": 990.0,
+        "minimum_critical_kw": 395.0
+      },
+      "origin": "Temporal actuator experiment; optimistic tracker is a deliberately faulty baseline"
+    }
+  },
+  "trials": [
+    {
+      "evaluation": 1,
+      "events": [
+        {
+          "kind": "delay_confirmation",
+          "at_s": 0,
+          "delay_s": 20
+        },
+        {
+          "kind": "fail_close",
+          "at_s": 0,
+          "delay_s": 0
+        }
+      ],
+      "is_failure": true
+    },
+    {
+      "evaluation": 2,
+      "events": [
+        {
+          "kind": "delay_confirmation",
+          "at_s": 0,
+          "delay_s": 7
+        },
+        {
+          "kind": "fail_close",
+          "at_s": 0,
+          "delay_s": 0
+        }
+      ],
+      "is_failure": true
+    },
+    {
+      "evaluation": 3,
+      "events": [
+        {
+          "kind": "delay_confirmation",
+          "at_s": 0,
+          "delay_s": 17
+        },
+        {
+          "kind": "fail_close",
+          "at_s": 0,
+          "delay_s": 0
+        },
+        {
+          "kind": "heartbeat",
+          "at_s": 1,
+          "delay_s": 0
+        }
+      ],
+      "is_failure": true
+    },
+    {
+      "evaluation": 4,
+      "events": [
+        {
+          "kind": "delay_confirmation",
+          "at_s": 0,
+          "delay_s": 0
+        },
+        {
+          "kind": "fail_close",
+          "at_s": 0,
+          "delay_s": 0
+        },
+        {
+          "kind": "heartbeat",
+          "at_s": 1,
+          "delay_s": 0
+        }
+      ],
+      "is_failure": false
+    }
+  ],
+  "original": {
+    "events": [
+      {
+        "kind": "delay_confirmation",
+        "at_s": 0,
+        "delay_s": 20
+      },
+      {
+        "kind": "fail_close",
+        "at_s": 0,
+        "delay_s": 0
+      }
+    ],
+    "action": {
+      "id": "tie_b",
+      "label": "West backup \u00b7 full section",
+      "operations": [
+        {
+          "line": "tie_b",
+          "closed": true
+        }
+      ]
+    },
+    "trace": [
+      {
+        "at_s": 0,
+        "event": "environment",
+        "detail": "delay_confirmation",
+        "commanded_closed": false,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "isolated",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "isolated",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 0,
+        "event": "environment",
+        "detail": "fail_close",
+        "commanded_closed": false,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "isolated",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "isolated",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 1,
+        "event": "command",
+        "detail": "Requested close tie_b",
+        "commanded_closed": true,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "restored",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "pending",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 2,
+        "event": "actuate",
+        "detail": "Actuator remained open",
+        "commanded_closed": true,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "restored",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "pending",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 6,
+        "event": "timeout",
+        "detail": "timeout",
+        "commanded_closed": true,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "restored",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "unknown \u2014 confirmation timeout",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 22,
+        "event": "position",
+        "detail": "Position feedback: open",
+        "commanded_closed": true,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "failed",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "failed",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      }
+    ],
+    "failures": [
+      {
+        "controller": "optimistic-v1",
+        "kind": "false_restored_after_timeout",
+        "at_s": 6
+      }
+    ],
+    "is_failure": true,
+    "final_electrical": {
+      "converged": true,
+      "feasible": true,
+      "voltages_pu": {
+        "source": 0.9991720432897527,
+        "sub": 0.9955293281313179,
+        "a1": 0.0,
+        "a2": 0.0,
+        "b1": 0.9943212624677932,
+        "b2": 0.9941056534824366,
+        "c1": 0.9935984061230052,
+        "c2": 0.9931217199303166,
+        "a1_lv": 0.0,
+        "a2_lv": 0.0,
+        "b1_lv": 0.9911137099654918,
+        "b2_lv": 0.9913231163962443,
+        "c1_lv": 0.9879661492169959,
+        "c2_lv": 0.9881981923932679
+      },
+      "line_loading_pct": {
+        "feed_a": 0.0,
+        "seg_a": 0.0,
+        "feed_b": 27.31261883382523,
+        "seg_b": 9.753183185294883,
+        "feed_c": 47.528944935626846,
+        "seg_c": 19.568040741250144,
+        "tie_b": 0.0,
+        "tie_c": 0.0
+      },
+      "transformer_loading_pct": {
+        "main": 25.274621919001525,
+        "tx_a1": 0.0,
+        "tx_a2": 0.0,
+        "tx_b1": 26.764175654592403,
+        "tx_b2": 23.227887102843773,
+        "tx_c1": 46.879961327718725,
+        "tx_c2": 41.01033731840736
+      },
+      "served_kw": 1424.9999977628709,
+      "critical_served_kw": 0.0,
+      "requested_kw": 2425.0,
+      "unserved_kw": 1000.0000022371291,
+      "restored_kw": 0.0,
+      "min_voltage_pu": 0.9879661492169959,
+      "max_loading_pct": 47.528944935626846,
+      "losses_kw": 7.5104017588808345,
+      "energized_buses": [
+        "b1",
+        "b2",
+        "c1",
+        "c2",
+        "sub"
+      ],
+      "violations": [],
+      "load_measurements": [
+        {
+          "load_id": "a1",
+          "label": "Medical campus",
+          "critical": true,
+          "requested_kw": 400.0,
+          "served_kw": 0.0,
+          "native_kw": 0.0,
+          "native_kvar": 0.0,
+          "quality": "solved",
+          "voltage_compliant": false,
+          "energized": false,
+          "voltage_pu": 0.0
+        },
+        {
+          "load_id": "a2",
+          "label": "Residential district",
+          "critical": false,
+          "requested_kw": 600.0,
+          "served_kw": 0.0,
+          "native_kw": 0.0,
+          "native_kvar": 0.0,
+          "quality": "solved",
+          "voltage_compliant": false,
+          "energized": false,
+          "voltage_pu": 0.0
+        },
+        {
+          "load_id": "b1",
+          "label": "West commercial",
+          "critical": false,
+          "requested_kw": 315.0,
+          "served_kw": 314.99999969582507,
+          "native_kw": 314.99999969582507,
+          "native_kvar": 103.53549206193588,
+          "quality": "solved",
+          "voltage_compliant": true,
+          "energized": true,
+          "voltage_pu": 0.9911137099654918
+        },
+        {
+          "load_id": "b2",
+          "label": "West residential",
+          "critical": false,
+          "requested_kw": 175.0,
+          "served_kw": 174.9999998341891,
+          "native_kw": 174.9999998341891,
+          "native_kvar": 57.519717832013775,
+          "quality": "solved",
+          "voltage_compliant": true,
+          "energized": true,
+          "voltage_pu": 0.9913231163962443
+        },
+        {
+          "load_id": "c1",
+          "label": "East industrial",
+          "critical": false,
+          "requested_kw": 550.0,
+          "served_kw": 549.9999989512205,
+          "native_kw": 549.9999989512205,
+          "native_kvar": 180.7762547404147,
+          "quality": "solved",
+          "voltage_compliant": true,
+          "energized": true,
+          "voltage_pu": 0.9879661492169959
+        },
+        {
+          "load_id": "c2",
+          "label": "East residential",
+          "critical": false,
+          "requested_kw": 385.00000000000006,
+          "served_kw": 384.99999928163606,
+          "native_kw": 384.99999928163606,
+          "native_kvar": 126.5433784480619,
+          "quality": "solved",
+          "voltage_compliant": true,
+          "energized": true,
+          "voltage_pu": 0.9881981923932679
+        }
+      ],
+      "native_load_kw": 1424.9999977628709,
+      "native_load_kvar": 468.37484308242625,
+      "source_kw": 1432.510393817997,
+      "source_kvar": 493.7720988570399,
+      "losses_kvar": 25.39725172149066,
+      "balance_residual_kw": -5.703754641039893e-06,
+      "balance_residual_kvar": 4.053122992786484e-06,
+      "voltage_compliant_served_kw": 1424.9999977628709,
+      "restoration_baseline_kw": {
+        "a1": 0.0,
+        "a2": 0.0
+      }
+    },
+    "unserved_energy_kwh": 6.111111124782456,
+    "duration_s": 22,
+    "predicted_restored_kw": 999.9999988366175,
+    "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4",
+    "interpretation": "The confirmed tracker can report unknown or failed without restoring service. Preventing a false success claim does not repair the switch or recover its load."
+  },
+  "reduced": {
+    "events": [
+      {
+        "kind": "delay_confirmation",
+        "at_s": 0,
+        "delay_s": 5
+      },
+      {
+        "kind": "fail_close",
+        "at_s": 0,
+        "delay_s": 0
+      }
+    ],
+    "action": {
+      "id": "tie_b",
+      "label": "West backup \u00b7 full section",
+      "operations": [
+        {
+          "line": "tie_b",
+          "closed": true
+        }
+      ]
+    },
+    "trace": [
+      {
+        "at_s": 0,
+        "event": "environment",
+        "detail": "delay_confirmation",
+        "commanded_closed": false,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "isolated",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "isolated",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 0,
+        "event": "environment",
+        "detail": "fail_close",
+        "commanded_closed": false,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "isolated",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "isolated",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 1,
+        "event": "command",
+        "detail": "Requested close tie_b",
+        "commanded_closed": true,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "restored",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "pending",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 2,
+        "event": "actuate",
+        "detail": "Actuator remained open",
+        "commanded_closed": true,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "restored",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "pending",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 6,
+        "event": "timeout",
+        "detail": "timeout",
+        "commanded_closed": true,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "restored",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "unknown \u2014 confirmation timeout",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      },
+      {
+        "at_s": 7,
+        "event": "position",
+        "detail": "Position feedback: open",
+        "commanded_closed": true,
+        "physical_closed": false,
+        "trackers": {
+          "optimistic-v1": {
+            "status": "failed",
+            "confirmed_closed": false
+          },
+          "confirmed-v2": {
+            "status": "failed",
+            "confirmed_closed": false
+          }
+        },
+        "actual_restored_kw": 0.0,
+        "actual_unserved_kw": 1000.0000022371291,
+        "electrical_pass": true
+      }
+    ],
+    "failures": [
+      {
+        "controller": "optimistic-v1",
+        "kind": "false_restored_after_timeout",
+        "at_s": 6
+      }
+    ],
+    "is_failure": true,
+    "final_electrical": {
+      "converged": true,
+      "feasible": true,
+      "voltages_pu": {
+        "source": 0.9991720432897527,
+        "sub": 0.9955293281313179,
+        "a1": 0.0,
+        "a2": 0.0,
+        "b1": 0.9943212624677932,
+        "b2": 0.9941056534824366,
+        "c1": 0.9935984061230052,
+        "c2": 0.9931217199303166,
+        "a1_lv": 0.0,
+        "a2_lv": 0.0,
+        "b1_lv": 0.9911137099654918,
+        "b2_lv": 0.9913231163962443,
+        "c1_lv": 0.9879661492169959,
+        "c2_lv": 0.9881981923932679
+      },
+      "line_loading_pct": {
+        "feed_a": 0.0,
+        "seg_a": 0.0,
+        "feed_b": 27.31261883382523,
+        "seg_b": 9.753183185294883,
+        "feed_c": 47.528944935626846,
+        "seg_c": 19.568040741250144,
+        "tie_b": 0.0,
+        "tie_c": 0.0
+      },
+      "transformer_loading_pct": {
+        "main": 25.274621919001525,
+        "tx_a1": 0.0,
+        "tx_a2": 0.0,
+        "tx_b1": 26.764175654592403,
+        "tx_b2": 23.227887102843773,
+        "tx_c1": 46.879961327718725,
+        "tx_c2": 41.01033731840736
+      },
+      "served_kw": 1424.9999977628709,
+      "critical_served_kw": 0.0,
+      "requested_kw": 2425.0,
+      "unserved_kw": 1000.0000022371291,
+      "restored_kw": 0.0,
+      "min_voltage_pu": 0.9879661492169959,
+      "max_loading_pct": 47.528944935626846,
+      "losses_kw": 7.5104017588808345,
+      "energized_buses": [
+        "b1",
+        "b2",
+        "c1",
+        "c2",
+        "sub"
+      ],
+      "violations": [],
+      "load_measurements": [
+        {
+          "load_id": "a1",
+          "label": "Medical campus",
+          "critical": true,
+          "requested_kw": 400.0,
+          "served_kw": 0.0,
+          "native_kw": 0.0,
+          "native_kvar": 0.0,
+          "quality": "solved",
+          "voltage_compliant": false,
+          "energized": false,
+          "voltage_pu": 0.0
+        },
+        {
+          "load_id": "a2",
+          "label": "Residential district",
+          "critical": false,
+          "requested_kw": 600.0,
+          "served_kw": 0.0,
+          "native_kw": 0.0,
+          "native_kvar": 0.0,
+          "quality": "solved",
+          "voltage_compliant": false,
+          "energized": false,
+          "voltage_pu": 0.0
+        },
+        {
+          "load_id": "b1",
+          "label": "West commercial",
+          "critical": false,
+          "requested_kw": 315.0,
+          "served_kw": 314.99999969582507,
+          "native_kw": 314.99999969582507,
+          "native_kvar": 103.53549206193588,
+          "quality": "solved",
+          "voltage_compliant": true,
+          "energized": true,
+          "voltage_pu": 0.9911137099654918
+        },
+        {
+          "load_id": "b2",
+          "label": "West residential",
+          "critical": false,
+          "requested_kw": 175.0,
+          "served_kw": 174.9999998341891,
+          "native_kw": 174.9999998341891,
+          "native_kvar": 57.519717832013775,
+          "quality": "solved",
+          "voltage_compliant": true,
+          "energized": true,
+          "voltage_pu": 0.9913231163962443
+        },
+        {
+          "load_id": "c1",
+          "label": "East industrial",
+          "critical": false,
+          "requested_kw": 550.0,
+          "served_kw": 549.9999989512205,
+          "native_kw": 549.9999989512205,
+          "native_kvar": 180.7762547404147,
+          "quality": "solved",
+          "voltage_compliant": true,
+          "energized": true,
+          "voltage_pu": 0.9879661492169959
+        },
+        {
+          "load_id": "c2",
+          "label": "East residential",
+          "critical": false,
+          "requested_kw": 385.00000000000006,
+          "served_kw": 384.99999928163606,
+          "native_kw": 384.99999928163606,
+          "native_kvar": 126.5433784480619,
+          "quality": "solved",
+          "voltage_compliant": true,
+          "energized": true,
+          "voltage_pu": 0.9881981923932679
+        }
+      ],
+      "native_load_kw": 1424.9999977628709,
+      "native_load_kvar": 468.37484308242625,
+      "source_kw": 1432.510393817997,
+      "source_kvar": 493.7720988570399,
+      "losses_kvar": 25.39725172149066,
+      "balance_residual_kw": -5.703754641039893e-06,
+      "balance_residual_kvar": 4.053122992786484e-06,
+      "voltage_compliant_served_kw": 1424.9999977628709,
+      "restoration_baseline_kw": {
+        "a1": 0.0,
+        "a2": 0.0
+      }
+    },
+    "unserved_energy_kwh": 1.9444444487944177,
+    "duration_s": 7,
+    "predicted_restored_kw": 999.9999988366175,
+    "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4",
+    "interpretation": "The confirmed tracker can report unknown or failed without restoring service. Preventing a false success claim does not repair the switch or recover its load."
+  },
+  "reduction": {
+    "evaluations": 9,
+    "trace": [
+      {
+        "events": [
+          {
+            "kind": "fail_close",
+            "at_s": 0,
+            "delay_s": 0
+          }
+        ],
+        "accepted": false
+      },
+      {
+        "events": [
+          {
+            "kind": "delay_confirmation",
+            "at_s": 0,
+            "delay_s": 20
+          }
+        ],
+        "accepted": false
+      },
+      {
+        "events": [
+          {
+            "kind": "delay_confirmation",
+            "at_s": 0,
+            "delay_s": 0
+          },
+          {
+            "kind": "fail_close",
+            "at_s": 0,
+            "delay_s": 0
+          }
+        ],
+        "accepted": false
+      },
+      {
+        "events": [
+          {
+            "kind": "delay_confirmation",
+            "at_s": 0,
+            "delay_s": 10
+          },
+          {
+            "kind": "fail_close",
+            "at_s": 0,
+            "delay_s": 0
+          }
+        ],
+        "accepted": true
+      },
+      {
+        "events": [
+          {
+            "kind": "delay_confirmation",
+            "at_s": 0,
+            "delay_s": 10
+          }
+        ],
+        "accepted": false
+      },
+      {
+        "events": [
+          {
+            "kind": "delay_confirmation",
+            "at_s": 0,
+            "delay_s": 5
+          },
+          {
+            "kind": "fail_close",
+            "at_s": 0,
+            "delay_s": 0
+          }
+        ],
+        "accepted": true
+      },
+      {
+        "events": [
+          {
+            "kind": "delay_confirmation",
+            "at_s": 0,
+            "delay_s": 5
+          }
+        ],
+        "accepted": false
+      },
+      {
+        "events": [
+          {
+            "kind": "delay_confirmation",
+            "at_s": 0,
+            "delay_s": 2
+          },
+          {
+            "kind": "fail_close",
+            "at_s": 0,
+            "delay_s": 0
+          }
+        ],
+        "accepted": false
+      },
+      {
+        "events": [
+          {
+            "kind": "delay_confirmation",
+            "at_s": 0,
+            "delay_s": 4
+          },
+          {
+            "kind": "fail_close",
+            "at_s": 0,
+            "delay_s": 0
+          }
+        ],
+        "accepted": false
+      }
+    ],
+    "neighborhood_exhausted": true,
+    "original_complexity": [
+      2,
+      20
+    ],
+    "reduced_complexity": [
+      2,
+      5
+    ],
+    "minimality": "Greedy deletion/delay neighborhood only; no global minimum guarantee"
+  },
+  "status": "failure_found",
+  "manifest": {
+    "harness_sha256": "d34e5731004bcbb04b54a814d405d74a71109a46a230c76c0aff6981b86c4839",
+    "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4"
+  },
+  "limitations": [
+    "Deliberately faulty optimistic tracker compared with confirmation-based state machine",
+    "Discrete events with steady-state power flow, not relay, protection or transient dynamics",
+    "One command; no retries, alternate switching or repair after an actuator failure",
+    "No failure in a finite search does not establish correctness"
+  ],
+  "content_sha256": "813108dc16e3891c1229743ef2ca9a9e8581fad98687229ea48a4bd1010c0ba5"
+}

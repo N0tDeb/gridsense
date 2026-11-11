@@ -1,0 +1,11 @@
+{
+  "frozen_at": "2026-10-14T17:24:25.659275+00:00",
+  "scope": "Rerun after shared replay integrity correction; original cases, seeds, budgets and tolerances preserved",
+  "previous_freeze_sha256": "51237dfe5ea831c474db4c6821babdc5e0676188abf091740db662667e8b9f1c",
+  "fingerprints": {
+    "episode_sha256": "9851059ef8eeb730496cf99c2e1777d3a632e7d6baa0c80a8cfb31cd672394f6",
+    "protocol_sha256": "0a8323971019694d205951ea945ec34f47ec73e8aa67af0fe05fb804835aeb12",
+    "runner_sha256": "c8b6d5fdf26a477130adccbc85c2bf20f0cf14c85096b4e271b72e7ca155194f",
+    "reference_sha256": "a052aa6a6bace3d73ecb7c9a27eb8dddd9a307bdf442b76a2cf15cc20ee86516"
+  }
+}

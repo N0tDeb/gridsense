@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "configuration": "ieee13-native-model-envelope-v1",
+  "frozen_date": "2026-09-28",
+  "purpose": "Published-voltage comparisons, declared native load-law envelopes, and numerical consistency are separate evidence categories.",
+  "published_inputs_protocol_sha256": "7648402dcbfc3b61ff183d2448922ec437bc9c08c02e838ee4796b3334267774",
+  "native_model_sha256": "e78ad86910eb7e03de4cc09dbffdb508061a2030617e4e928ba16674e983adae",
+  "convergence_tolerance": 1e-8,
+  "published_voltage_tolerance_pu": 0.003,
+  "power_numeric_allowance_kw_kvar": 0.05,
+  "current_numeric_allowance_a": 0.1,
+  "balance_tolerance_kw_kvar": 0.05,
+  "tolerance_basis": "Propagate the existing 0.003 pu published-voltage allowance through the declared load law before comparison. Retain the original 0.05 kW/kvar numeric and balance allowances and 0.1 A current floor. Do not fit tolerances to the new output residuals.",
+  "load_model": {
+    "model": 1,
+    "phases": 1,
+    "connection": "wye",
+    "vminpu": 0.95,
+    "vmaxpu": 1.05,
+    "rated_phase_kv": {"634a": 0.277, "634b": 0.277, "634c": 0.277, "645": 2.4, "675a": 2.4, "675b": 2.4, "675c": 2.4}
+  },
+  "sensitivity": {"convergence_tolerances": [1e-4, 1e-6, 1e-8, 1e-10], "load_multipliers": [0.5, 1.0, 1.25]},
+  "scope": "No native load parameters or voltage limits are changed. The envelope is an analytical prediction conditioned on published voltage and declared native Model=1 behavior, not independent measured P/Q or current data. Numerical balance is internal consistency, not field validation. No restoration/protection validation is implied.",
+  "documentation": "https://dss-extensions.org/dss-format/Load.html"
+}

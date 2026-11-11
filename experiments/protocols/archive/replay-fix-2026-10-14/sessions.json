@@ -1,0 +1,309 @@
+{
+  "name": "Fixed-horizon restoration and command lifecycle comparison",
+  "scope": "Inspected synthetic engineering cases on the balanced teaching feeder; no holdout or field-performance claim",
+  "horizon_s": 12,
+  "policies": [
+    "off",
+    "nominal",
+    "guarded"
+  ],
+  "control": {
+    "max_operations": 3,
+    "evaluation_budget": 2048,
+    "confirmation_timeout_s": 3,
+    "max_attempts_per_position": 2,
+    "max_commands": 24,
+    "max_decisions": 32,
+    "replan_interval_s": 2,
+    "auto_return_normal": true,
+    "planning_timing": {
+      "actuation_delay_s": 1,
+      "confirmation_delay_s": 0,
+      "energy_horizon_s": 10
+    }
+  },
+  "measurements": {
+    "period_s": 1,
+    "latency_s": 0,
+    "fresh_for_s": 2,
+    "initial_uncertainty_pct": 10,
+    "uncertainty_growth_pct_per_s": 2,
+    "maximum_uncertainty_pct": 80
+  },
+  "reference_cases": [
+    "feeder-repair",
+    "busy-donors",
+    "stale-east-demand",
+    "transformer-repair"
+  ],
+  "dense_cases": [
+    "feeder-repair",
+    "busy-donors",
+    "stale-east-demand"
+  ],
+  "dense_levels": [
+    0,
+    0.5,
+    1
+  ],
+  "cases": [
+    {
+      "id": "feeder-repair",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "transformer-repair",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "transformer",
+          "equipment": "tx_a1"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "source-repair",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "source",
+          "equipment": "source"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "busy-donors",
+      "initial_factors": {
+        "a": 1,
+        "b": 1.8,
+        "c": 1.8
+      },
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 8,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "stale-east-demand",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "demand",
+          "at_s": 1,
+          "feeder": "c",
+          "factor": 2
+        },
+        {
+          "kind": "transport",
+          "at_s": 1,
+          "equipment": "load:c1",
+          "latency_s": 0,
+          "drop": true
+        },
+        {
+          "kind": "transport",
+          "at_s": 1,
+          "equipment": "load:c2",
+          "latency_s": 0,
+          "drop": true
+        }
+      ]
+    },
+    {
+      "id": "failed-ties",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_b",
+          "fail": true
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_c",
+          "fail": true
+        },
+        {
+          "kind": "repair",
+          "at_s": 8,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "late-confirmation",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_c",
+          "feedback_delay_s": 5,
+          "duplicates": 2
+        },
+        {
+          "kind": "repair",
+          "at_s": 8,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "lost-confirmation",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "actuator",
+          "at_s": 1,
+          "equipment": "line:tie_c",
+          "drop_feedback": true
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        }
+      ]
+    },
+    {
+      "id": "refault-during-recovery",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "outage",
+          "at_s": 7,
+          "incident_id": "again",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        }
+      ]
+    },
+    {
+      "id": "unseen-demand-during-recovery",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "repair",
+          "at_s": 5,
+          "incident_id": "trip"
+        },
+        {
+          "kind": "demand",
+          "at_s": 6,
+          "feeder": "a",
+          "factor": 2
+        }
+      ]
+    },
+    {
+      "id": "no-source",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "source",
+          "equipment": "source"
+        }
+      ]
+    },
+    {
+      "id": "received-demand-changes-plan",
+      "events": [
+        {
+          "kind": "outage",
+          "at_s": 1,
+          "incident_id": "trip",
+          "equipment_kind": "line",
+          "equipment": "feed_a"
+        },
+        {
+          "kind": "demand",
+          "at_s": 2,
+          "feeder": "b",
+          "factor": 2
+        }
+      ]
+    }
+  ]
+}
