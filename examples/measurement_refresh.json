@@ -1,0 +1,158 @@
+{
+  "title": "Fresh donor default",
+  "horizon_s": 19,
+  "initial_factors": {
+    "a": 0.8,
+    "b": 1.6,
+    "c": 1.0
+  },
+  "measurements": {
+    "period_s": 1,
+    "latency_s": 0,
+    "fresh_for_s": 2,
+    "initial_uncertainty_pct": 10.0,
+    "uncertainty_growth_pct_per_s": 2.0,
+    "maximum_uncertainty_pct": 80.0
+  },
+  "rules": {
+    "raise_samples": 2,
+    "clear_samples": 3,
+    "voltage_low_pu": 0.95,
+    "voltage_high_pu": 1.05,
+    "voltage_reset_margin_pu": 0.01,
+    "loading_limit_pct": 100.0,
+    "loading_reset_margin_pct": 2.0
+  },
+  "control": {
+    "policy": "guarded",
+    "max_operations": 3,
+    "evaluation_budget": 2048,
+    "confirmation_timeout_s": 5,
+    "max_attempts_per_position": 2,
+    "max_commands": 24,
+    "max_decisions": 32,
+    "replan_interval_s": 2,
+    "auto_return_normal": true
+  },
+  "events": [
+    {
+      "at_s": 1,
+      "kind": "transport",
+      "equipment": "load:b1",
+      "latency_s": 0,
+      "drop": true
+    },
+    {
+      "at_s": 1,
+      "kind": "transport",
+      "equipment": "bus:b1_lv",
+      "latency_s": 0,
+      "drop": true
+    },
+    {
+      "at_s": 1,
+      "kind": "transport",
+      "equipment": "load:b2",
+      "latency_s": 0,
+      "drop": true
+    },
+    {
+      "at_s": 1,
+      "kind": "transport",
+      "equipment": "bus:b2_lv",
+      "latency_s": 0,
+      "drop": true
+    },
+    {
+      "at_s": 1,
+      "kind": "transport",
+      "equipment": "load:c1",
+      "latency_s": 0,
+      "drop": true
+    },
+    {
+      "at_s": 1,
+      "kind": "transport",
+      "equipment": "bus:c1_lv",
+      "latency_s": 0,
+      "drop": true
+    },
+    {
+      "at_s": 1,
+      "kind": "transport",
+      "equipment": "load:c2",
+      "latency_s": 0,
+      "drop": true
+    },
+    {
+      "at_s": 1,
+      "kind": "transport",
+      "equipment": "bus:c2_lv",
+      "latency_s": 0,
+      "drop": true
+    },
+    {
+      "at_s": 10,
+      "kind": "outage",
+      "incident_id": "feeder-trip",
+      "equipment_kind": "line",
+      "equipment": "feed_a"
+    },
+    {
+      "at_s": 15,
+      "kind": "transport",
+      "equipment": "load:b1",
+      "latency_s": 0,
+      "drop": false
+    },
+    {
+      "at_s": 15,
+      "kind": "transport",
+      "equipment": "bus:b1_lv",
+      "latency_s": 0,
+      "drop": false
+    },
+    {
+      "at_s": 15,
+      "kind": "transport",
+      "equipment": "load:b2",
+      "latency_s": 0,
+      "drop": false
+    },
+    {
+      "at_s": 15,
+      "kind": "transport",
+      "equipment": "bus:b2_lv",
+      "latency_s": 0,
+      "drop": false
+    },
+    {
+      "at_s": 15,
+      "kind": "transport",
+      "equipment": "load:c1",
+      "latency_s": 0,
+      "drop": false
+    },
+    {
+      "at_s": 15,
+      "kind": "transport",
+      "equipment": "bus:c1_lv",
+      "latency_s": 0,
+      "drop": false
+    },
+    {
+      "at_s": 15,
+      "kind": "transport",
+      "equipment": "load:c2",
+      "latency_s": 0,
+      "drop": false
+    },
+    {
+      "at_s": 15,
+      "kind": "transport",
+      "equipment": "bus:c2_lv",
+      "latency_s": 0,
+      "drop": false
+    }
+  ]
+}

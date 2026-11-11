@@ -1,0 +1,9 @@
+{
+  "title": "Transformer outage with delayed status and scheduled repair",
+  "horizon_s": 8,
+  "events": [
+    {"kind": "transport", "at_s": 1, "equipment": "transformer:tx_a1", "latency_s": 2},
+    {"kind": "outage", "at_s": 2, "incident_id": "tx-outage", "equipment_kind": "transformer", "equipment": "tx_a1"},
+    {"kind": "repair", "at_s": 5, "incident_id": "tx-outage"}
+  ]
+}

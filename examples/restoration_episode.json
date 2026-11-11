@@ -1,0 +1,9 @@
+{
+  "title": "Feeder outage, alternate supply and checked recovery",
+  "horizon_s": 9,
+  "control": {"policy": "nominal"},
+  "events": [
+    {"kind": "outage", "at_s": 1, "incident_id": "feeder", "equipment_kind": "line", "equipment": "feed_a"},
+    {"kind": "repair", "at_s": 5, "incident_id": "feeder"}
+  ]
+}
