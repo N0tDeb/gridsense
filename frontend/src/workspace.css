@@ -1,0 +1,343 @@
+.page-heading {
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.workspace-help {
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+.live-session-actions,
+.live-network-tools,
+.live-topology-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.live-session-actions strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.live-playback-note {
+  margin-bottom: 0;
+}
+.live-session-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 5px 18px;
+  margin: 8px 0 10px;
+}
+.live-session-feedback p {
+  margin: 0;
+  padding: 0;
+  font-size: 11px;
+}
+.live-diagram-view {
+  flex-direction: row;
+  align-items: center;
+}
+.live-diagram-view select {
+  width: 215px;
+}
+.live-topology-panel > .panel-header {
+  padding: 12px 16px;
+  min-height: 58px;
+}
+.live-topology {
+  height: clamp(520px, 60vh, 620px);
+}
+.live-diagram-caption {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 5px 12px;
+}
+.live-diagram-caption .live-tag {
+  white-space: nowrap;
+}
+.live-topology-options {
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+.live-topology-options .live-checkbox {
+  margin: 0;
+}
+.live-topology-options details {
+  max-width: 460px;
+}
+.live-topology-options summary {
+  padding: 0;
+  font-size: 11px;
+}
+.live-evidence-links {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 14px;
+}
+.live-evidence-links button {
+  justify-content: flex-start;
+}
+.live-restoration-status .live-incident {
+  padding: 10px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.live-restoration-status .live-incident small {
+  display: none;
+}
+.live-restoration-status .live-incident button {
+  font-size: 11px;
+  padding: 8px;
+  white-space: normal;
+}
+.live-active-incidents h3 {
+  font-size: 13px;
+}
+.evidence-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.evidence-nav button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  padding: 9px 14px;
+  color: #536477;
+}
+.evidence-nav button.active {
+  border-color: #62778c;
+  background: #edf1f5;
+  color: #263c50;
+}
+.detail-dialog {
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 16px 64px #20334833;
+  padding: 0;
+  width: min(1000px, calc(100% - 48px));
+  max-width: none;
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  gap: 0;
+}
+.detail-dialog:not([open]) {
+  display: none;
+}
+.detail-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.detail-dialog::backdrop {
+  background: #24384b66;
+}
+.detail-dialog-heading {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.detail-dialog-heading h2 {
+  font-size: 19px;
+}
+.dialog-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: #3f5366;
+}
+.dialog-close:hover {
+  background: #edf1f5;
+}
+.detail-dialog-body {
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 24px;
+}
+.detail-dialog-body > p + p {
+  margin-top: 16px;
+}
+.detail-dialog .live-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.detail-dialog .live-equipment,
+.detail-dialog .live-scenario {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.detail-dialog .live-equipment .panel-header h2,
+.detail-dialog .live-scenario .panel-header h2 {
+  display: none;
+}
+.detail-dialog .live-equipment > .panel-header,
+.detail-dialog .live-scenario > .panel-header {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  justify-content: flex-end;
+}
+.detail-dialog .live-equipment > .live-panel-body,
+.detail-dialog .live-scenario > .live-panel-body {
+  padding: 0;
+}
+.detail-dialog .table-scroll {
+  width: 100%;
+}
+.detail-drawer {
+  width: min(650px, 100%);
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 12px 0 0 12px;
+  margin: 0 0 0 auto;
+}
+.live-session-record {
+  margin-top: 18px;
+}
+.live-session-record summary {
+  font-size: 12px;
+}
+.demand-sweep > summary {
+  padding: 17px 20px;
+  font-size: 13px;
+}
+.demand-sweep > summary span {
+  margin-left: 12px;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.demand-sweep[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+@media (max-width: 650px) {
+  .page-heading {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .workspace-help {
+    margin-top: 0;
+  }
+  .live-session-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .live-topology {
+    height: 380px;
+  }
+  .live-session-picker > label {
+    width: 100%;
+    font-size: 11px;
+  }
+  .live-session-picker select {
+    width: 0;
+  }
+  .live-playback {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .live-playback button {
+    justify-content: center;
+    padding: 10px 7px;
+    font-size: 11px;
+  }
+  .live-playback label {
+    justify-content: space-between;
+    font-size: 11px;
+  }
+  .live-playback select {
+    width: 56px;
+  }
+  .live-metrics > div {
+    padding: 10px 12px;
+  }
+  .live-metrics span {
+    font-size: 10px;
+  }
+  .live-topology-panel > .panel-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .live-network-tools {
+    display: contents;
+  }
+  .live-network-tools > button {
+    grid-row: 1;
+    grid-column: 2;
+    font-size: 11px;
+    padding: 9px 11px;
+  }
+  .live-diagram-view {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .live-diagram-view select {
+    flex: 1;
+    width: 0;
+  }
+  .live-topology .react-flow__controls-button {
+    width: 40px;
+    height: 40px;
+  }
+  .workspace-subnav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    margin-bottom: 18px;
+  }
+  .workspace-subnav button {
+    min-width: 0;
+    white-space: normal;
+    padding: 10px 8px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  nav[aria-label='Analysis tools'] button:last-child {
+    grid-column: 1 / -1;
+  }
+  .detail-dialog {
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+  .detail-drawer {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+  .detail-dialog-heading {
+    padding: 12px 16px;
+  }
+  .detail-dialog-body {
+    padding: 16px;
+  }
+  .detail-dialog .live-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .detail-dialog .panel-header {
+    padding: 14px;
+  }
+  .demand-sweep > summary span {
+    display: block;
+    margin: 4px 0 0;
+  }
+}
