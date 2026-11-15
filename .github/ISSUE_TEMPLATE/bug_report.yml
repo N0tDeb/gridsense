@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible application or simulation defect.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "For security-sensitive reports, follow SECURITY.md. Remove sensitive information from logs and exports."
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: GridSense version, operating system, Python version, Node version and browser.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include a minimal scenario or export when useful.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include relevant errors or test output.
+    validations:
+      required: true

@@ -1,0 +1,346 @@
+--- a/README.md
++++ b/README.md
+@@ -141,7 +141,9 @@
+ 
+ The [14 October 2026 review](docs/REVIEW_2026-10-14.md) records the dependency
+ update and release-packaging repair. The [follow-up](docs/FOLLOWUP_2026-10-14.md)
+-records Git source fixes, reference diagnostics and the latest local checks.
++records Git source fixes and reference diagnostics.
++The [evidence-input review](docs/EVIDENCE_INPUT_REVIEW_2026-10-14.md) adds
++non-finite diagnostic rejection and records the latest verification.
+ [GitHub readiness](docs/GITHUB_READINESS.md), [contribution guidance](CONTRIBUTING.md)
+ and [security reporting](SECURITY.md) cover repository preparation.
+ 
+--- a/backend/tests/test_reference_sensitivity.py
++++ b/backend/tests/test_reference_sensitivity.py
+@@ -1,6 +1,9 @@
+ """Native controls isolate constitutive assumptions from solve precision."""
+ 
+ import copy
++import json
++import subprocess
++import sys
+ from pathlib import Path
+ 
+ import pytest
+@@ -55,3 +58,47 @@
+         saved["frozen_targets_and_tolerances"]["power_tolerance_kw_kvar"] = 2.0
+     with pytest.raises(ValueError, match="differs from actual native"):
+         runner.compare_reports(saved, actual)
++
++
++@pytest.mark.parametrize(
++    "field,value",
++    [
++        ("actual", float("inf")),
++        ("actual", float("-inf")),
++        ("actual", float("nan")),
++        ("tolerance", float("inf")),
++        ("balance", float("inf")),
++    ],
++)
++def test_saved_diagnostic_rejects_nonfinite_measurements_and_allowances(study, field, value):
++    runner, actual = study
++    saved = copy.deepcopy(actual)
++    if field == "balance":
++        saved["rows"][0]["balance"]["residual_kw_kvar"][0] = value
++    else:
++        saved["rows"][0]["checks"][0][field] = value
++    with pytest.raises(ValueError, match="non-finite"):
++        runner.compare_reports(saved, actual)
++
++
++@pytest.mark.parametrize("token", ["Infinity", "-Infinity", "NaN", "1e999", "-1e999"])
++def test_diagnostic_cli_rejects_nonfinite_json_and_numeric_overflow(study, tmp_path, token):
++    _, actual = study
++    saved = copy.deepcopy(actual)
++    saved["rows"][0]["checks"][0]["actual"] = "invalid-numeric-token"
++    source = tmp_path / "altered-report.json"
++    source.write_text(json.dumps(saved).replace('"invalid-numeric-token"', token), encoding="utf-8")
++    result = subprocess.run(
++        [
++            sys.executable,
++            str(Path(__file__).resolve().parents[2] / "experiments/run_reference_sensitivity.py"),
++            "--verify-report",
++            str(source),
++        ],
++        capture_output=True,
++        text=True,
++        timeout=30,
++    )
++    assert result.returncode == 2
++    assert "non-finite" in result.stderr and "Traceback" not in result.stderr
++    assert not result.stdout
+--- /dev/null
++++ b/docs/EVIDENCE_INPUT_REVIEW_2026-10-14.md
+@@ -0,0 +1,70 @@
++# Diagnostic evidence input review
++
++Completed on 14 October 2026 by Codex (automated). Application version: 0.4.4.
++
++## Preserved and tested ZIP
++
++`GridSense_Release_Prepared.zip` was preserved before this work. Its SHA-256
++is `533893def3ddce2f50219f7634da524545f13fddca33bd3282041778419c6e46`.
++All 420 manifest files and ZIP CRCs checked successfully. Extracted source in
++a path containing spaces and Unicode loaded its own Python module, reran the
++four native diagnostic controls and strictly replayed the bundled regression.
++Installed locked dependencies were reused.
++[Extracted-package record](verification/evidence-input-2026-10-14/extracted-followup-package.json).
++
++The preceding 284-backend/38-browser full verification remains under
++[follow-up checkpoint checks](verification/followup-2026-10-14/checkpoint-checks/verification.json).
++The previous diagnostic results are also retained as
++[historical results](verification/evidence-input-2026-10-14/reference-sensitivity-before.json).
++
++## Reproduced defect and fix
++
++The diagnostic verifier accepted an altered measurement containing
++`Infinity` as equal to the finite native result. Its relative comparator
++assumes finite numbers: with an infinite operand both sides of its relative
++allowance test can become infinite. Python's JSON reader accepts non-standard
++Infinity/NaN tokens and can overflow a numeric literal such as `1e999`.
++
++An actual command execution from the extracted saved source returned exit 0
++for an Infinity-altered report. The corrected source returns exit 2 with a
++non-finite-data error and no traceback.
++[Before/after reproduction](verification/evidence-input-2026-10-14/nonfinite-reproduction.json).
++
++The diagnostic checker now requires finite JSON data before comparing
++saved and actual reports. The CLI validates the input before starting the
++study and reports invalid file/object/comparison data as argument errors.
++Ten added regressions cover positive/negative infinity and NaN in measurements,
++infinite tolerances/residuals, and all three non-standard tokens plus positive
++and negative numeric overflow through real CLI executions. All 14 diagnostic
++regression cases pass.
++
++This fix changes the diagnostic runner and its tests. The 37 production
++module/model files retain the saved ZIP's bytes. Simulation, core replay,
++model inputs, frozen reference targets and acceptance tolerances are unchanged.
++The recorded source digest for the updated diagnostic is regenerated through
++an actual native study execution. The four configurations still give 52/56,
++53/56, 56/56 and 56/56; native defaults remain the original primary result.
++[Diagnostic scope](REFERENCE_SENSITIVITY.md).
++
++## Verification and delivery
++
++Complete Linux verification passes 294 backend and 38 browser tests with no
++failures, skips, errors or flaky cases. The 29 runner steps comprise 28 passes
++and the explicitly retained original electrical-reference mismatch. Native
++backend/frontend HTTP, six workflow replays, desktop/phone geometry checks
++and abrupt-restart recovery pass. Existing dependencies and compatible
++Chromium are reused; source/build fingerprints are checked by release tooling.
++[Latest verification](VERIFICATION.md),
++[complete current report](verification/checks/verification.json).
++
++The ZIP includes the corrected runner, regenerated diagnostic data, the
++new integrity/extraction records and retained earlier evidence. An
++[incremental source patch](reviews/evidence-input-2026-10-14.patch) applies
++to `GridSense_Release_Prepared.zip`. Verification evidence is supplied in the
++complete ZIP; rerun verification after applying a source patch.
++
++GitHub is available but not enabled here, and the local repository has no
++remote destination. Repository publication and hosted CI therefore remain
++pending a connected GitHub integration and repository URL. Windows execution,
++independent reviews and the owner's project license selection remain open.
++No remote repository was created or published.
+--- a/docs/FOLLOWUP_2026-10-14.md
++++ b/docs/FOLLOWUP_2026-10-14.md
+@@ -56,7 +56,7 @@
+ strictly replay. Desktop and phone geometry checks, topology labels,
+ JavaScript/network checks and process-restart recovery pass.
+ [Latest verification](VERIFICATION.md),
+-[complete raw report](verification/checks/verification.json).
++[complete raw report](verification/followup-2026-10-14/checkpoint-checks/verification.json).
+ 
+ The locked environment and compatible test browser from the initial review
+ were reused. New dependency audits and full benchmark campaign reruns were
+--- a/docs/GITHUB_READINESS.md
++++ b/docs/GITHUB_READINESS.md
+@@ -4,7 +4,8 @@
+ the workflow, lockfiles, tests, model provenance, third-party notices and
+ documentation. See the [initial review](REVIEW_2026-10-14.md) and
+ [follow-up](FOLLOWUP_2026-10-14.md) for executed local checks and outstanding
+-validation.
++validation. The [evidence-input review](EVIDENCE_INPUT_REVIEW_2026-10-14.md)
++records subsequent diagnostic input validation and verification.
+ 
+ ## Included repository files
+ 
+--- a/docs/REFERENCE_SENSITIVITY.md
++++ b/docs/REFERENCE_SENSITIVITY.md
+@@ -57,4 +57,7 @@
+ agreement across voltage and supplementary solves, and compares saved
+ source/settings/results with a fresh native execution. Regression cases
+ reject relabelled baseline status, forged counts and changed tolerances.
++They also reject non-finite measurements, residuals and tolerances. Both
++saved and fresh reports must contain finite JSON numbers; the CLI rejects
++Infinity/NaN tokens and numeric overflow such as `1e999` with exit code 2.
+ The standard verification runner includes this check.
+--- a/docs/VERIFICATION.md
++++ b/docs/VERIFICATION.md
+@@ -1,6 +1,47 @@
+ # Verification
+ 
+-## Latest local follow-up: 14 October 2026
++## Latest evidence-input review: 14 October 2026
++
++Complete Linux verification passed after adding finite-number validation to
++the reference sensitivity checker. The numerical simulation/replay modules,
++model inputs and frozen electrical reference targets are unchanged.
++
++| Suite | Passed | Failed | Skipped | Errors |
++| --- | ---: | ---: | ---: | ---: |
++| Backend | 294 | 0 | 0 | 0 |
++| Browser | 38 | 0 | 0 | 0 |
++
++There are zero flaky browser cases. The current
++[verification report](verification/checks/verification.json) contains 29 steps:
++28 passed and one retains the original 52/56 electrical-reference mismatch.
++[Runtime checks](verification/checks/runtime/runtime.json) record native
++health/frontend HTTP 200, six matched exports, clear topology labels and
++no checked overflow, JavaScript errors or failed network requests.
++[Restart checks](verification/checks/restart/restart.json) retain pending
++commands and identical retries, then complete native restoration and replay.
++
++Ten added tests raise the diagnostic suite to 14 cases. It rejects non-finite
++measurements, residuals and tolerances, including Infinity/NaN JSON tokens
++and numeric overflow such as `1e999`. The actual
++[before/after CLI reproduction](verification/evidence-input-2026-10-14/nonfinite-reproduction.json)
++records the saved source accepting an altered report and the corrected
++source rejecting it with exit 2 and no traceback. Fresh execution regenerated
++the diagnostic report with its updated runner fingerprint; results remain
++52/56, 53/56, 56/56 and 56/56 under the four declared configurations.
++[Review and scope](EVIDENCE_INPUT_REVIEW_2026-10-14.md).
++
++The previously saved follow-up ZIP passed its CRCs and all 420 manifest hashes.
++An extracted path containing spaces and Unicode loaded its own Python module,
++ran isolated native diagnostics and strictly replayed the bundled regression.
++[Extraction record](verification/evidence-input-2026-10-14/extracted-followup-package.json).
++This check reused installed dependencies and belongs to that preserved
++follow-up ZIP before the latest finite-input fix. Existing locked dependencies
++and compatible Chromium were also reused for the complete current runner.
++
++Windows execution, hosted CI, external human reviews and owner license
++selection remain open. The earlier dated records below retain their own scope.
++
++## Source-preparation checkpoint: 14 October 2026
+ 
+ GridSense 0.4.4 passed complete local Linux verification after the Git source
+ fixes and reference sensitivity study. The simulation modules, model inputs
+@@ -11,14 +52,14 @@
+ | Backend | 284 | 0 | 0 | 0 |
+ | Browser | 38 | 0 | 0 | 0 |
+ 
+-There are zero flaky browser cases. The current
+-[verification record](verification/checks/verification.json) contains 29 steps:
++There are zero flaky browser cases. The checkpoint
++[verification record](verification/followup-2026-10-14/checkpoint-checks/verification.json) contains 29 steps:
+ 28 passed and one retains the known electrical-reference mismatch. The
+-[runtime report](verification/checks/runtime/runtime.json) records native
++[runtime report](verification/followup-2026-10-14/checkpoint-checks/runtime/runtime.json) records native
+ readiness and frontend HTTP 200, six matched workflow replays, all eight
+ connections, clear topology labels and no checked viewport overflow,
+ JavaScript errors or failed network requests. The
+-[restart report](verification/checks/restart/restart.json) records recovery
++[restart report](verification/followup-2026-10-14/checkpoint-checks/restart/restart.json) records recovery
+ of committed commands and identical retries.
+ 
+ Seven new Git regression cases cover actual custom-directory SQLite/WAL/SHM
+--- a/docs/reviews/STATUS.json
++++ b/docs/reviews/STATUS.json
+@@ -25,7 +25,7 @@
+     "status": "source_and_restart_verified",
+     "date": "2026-10-14",
+     "evidence": "../verification/checks/restart/restart.json",
+-    "scope": "Follow-up source: 284 backend and 38 browser cases; native backend and built frontend HTTP 200; all six runtime exports replayed; pending-command restart and identical retry verified. Locked environment from the initial review reused."
++    "scope": "Evidence-input follow-up: 294 backend and 38 browser cases; native backend and built frontend HTTP 200; six runtime exports strictly replay; pending-command restart and identical retry verified. Locked environment and compatible Chromium reused."
+   },
+   "fresh_dependency_install": {
+     "status": "locked_dependencies_installed_linux",
+@@ -60,7 +60,22 @@
+   "git_source_export": {
+     "status": "signed_inputs_byte_identity_checked",
+     "date": "2026-10-14",
+-    "evidence": "../verification/followup-2026-10-14/git-source.json",
+-    "scope": "Staged Git archive matches every source/configuration/evidence hash in the successful follow-up verification. Built frontend assets are separately verified for release packaging."
++    "evidence": "../verification/evidence-input-2026-10-14/git-source.json",
++    "scope": "Staged source archive matches every signed input in the complete evidence-input verification; frontend/dist separately verified for the release ZIP."
++  },
++  "automated_evidence_input_review": {
++    "status": "completed_with_fix_and_open_items",
++    "reviewer": "Codex (automated)",
++    "date": "2026-10-14",
++    "report": "../EVIDENCE_INPUT_REVIEW_2026-10-14.md",
++    "backend_passed": 294,
++    "browser_passed": 38,
++    "scope": "Actual Infinity-altered diagnostic accepted by saved source and rejected by fixed source; finite saved/actual report validation; ten new direct and CLI cases including numeric overflow. Existing simulation/model/replay modules and frozen targets unchanged. Complete Linux verification rerun."
++  },
++  "followup_extracted_package": {
++    "status": "passed_with_existing_dependencies",
++    "date": "2026-10-14",
++    "evidence": "../verification/evidence-input-2026-10-14/extracted-followup-package.json",
++    "scope": "Saved follow-up ZIP before the finite-input fix: CRCs/all 420 manifest hashes, extracted Python imports, isolated native diagnostics and bundled strict regression replay. Spaces/Unicode source path; installed dependencies reused."
+   }
+ }
+--- a/experiments/reference_sensitivity_results/results.json
++++ b/experiments/reference_sensitivity_results/results.json
+@@ -1,10 +1,10 @@
+ {
+   "kind": "reference-settings-sensitivity",
+   "schema_version": 1,
+-  "verified_at": "2026-10-14T15:48:25.638067+00:00",
++  "verified_at": "2026-10-14T16:48:55.298714+00:00",
+   "design": "Post-hoc controls selected after inspecting the original mismatches; not blind confirmatory evidence",
+   "inputs_sha256": {
+-    "experiments/run_reference_sensitivity.py": "4da401f4d6a6562cdd670094870f47c6ad57d2b1689089117ffc318f2a530cd3",
++    "experiments/run_reference_sensitivity.py": "35b09ae0de6d9a3b3f811da01baa36c2592d2a0ceafd27bf2ee37ba4ac2fb111",
+     "experiments/protocols/electrical.json": "7648402dcbfc3b61ff183d2448922ec437bc9c08c02e838ee4796b3334267774",
+     "backend/gridsense/ieee13.py": "b127a9822f9e1b7758eb9016e01414233b097c903e01e35d5826d939a1f678c8",
+     "backend/gridsense/reference_checks.py": "c20bd6247d0cfb516d9acc79c3d1890df787b28ac25dd9fdf5697f5684653e70",
+--- a/experiments/run_reference_sensitivity.py
++++ b/experiments/run_reference_sensitivity.py
+@@ -149,7 +149,18 @@
+     }
+ 
+ 
++def require_finite_json(report):
++    # The relative comparator assumes finite values. Infinity can otherwise
++    # satisfy inf <= tolerance * inf, falsely matching a finite measurement.
++    try:
++        json.dumps(report, allow_nan=False)
++    except (ValueError, TypeError) as exc:
++        raise ValueError("Sensitivity report contains non-finite or unsupported JSON data") from exc
++
++
+ def compare_reports(saved, actual):
++    require_finite_json(saved)
++    require_finite_json(actual)
+     for key in (
+         "kind",
+         "schema_version",
+@@ -171,10 +182,21 @@
+     args = parser.parse_args()
+     if args.output and args.output.exists():
+         parser.error("Output already exists; choose a new filename")
++    saved = None
++    if args.verify_report:
++        try:
++            saved = json.loads(args.verify_report.read_text(encoding="utf-8-sig"))
++            require_finite_json(saved)
++            if not isinstance(saved, dict):
++                raise ValueError("Expected a sensitivity report JSON object")
++        except (OSError, ValueError, TypeError) as exc:
++            parser.error(str(exc))
+     actual = run_study()
+-    if args.verify_report:
+-        old = json.loads(args.verify_report.read_text(encoding="utf-8"))
+-        compare_reports(old, actual)
++    if saved is not None:
++        try:
++            compare_reports(saved, actual)
++        except (KeyError, TypeError, ValueError) as exc:
++            parser.error(str(exc))
+     if args.output:
+         args.output.parent.mkdir(parents=True, exist_ok=True)
+         args.output.write_text(

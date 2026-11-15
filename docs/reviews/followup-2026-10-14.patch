@@ -1,0 +1,3344 @@
+--- a/.gitattributes
++++ b/.gitattributes
+@@ -7,3 +7,5 @@
+ *.woff2 binary
+ # Retain byte-exact upstream sources, references and their provenance hashes.
+ backend/gridsense/circuits/ieee13/* -text
++# Recorded outcome tables retain their exact CSV-writer newlines.
++experiments/**/*.csv -text
+--- a/.gitignore
++++ b/.gitignore
+@@ -9,6 +9,19 @@
+ frontend/test-results/
+ frontend/playwright-report/
+ var/
++# Runtime data can also be created with --data-dir outside var/.
++*.sqlite
++*.sqlite3
++*.db
++*.sqlite-wal
++*.sqlite-shm
++*.sqlite-journal
++*.sqlite3-wal
++*.sqlite3-shm
++*.sqlite3-journal
++*.db-wal
++*.db-shm
++*.db-journal
+ .DS_Store
+ *.tsbuildinfo
+ .env
+--- a/DEVELOPMENT.md
++++ b/DEVELOPMENT.md
+@@ -93,6 +93,18 @@
+ 
+ ## Packaging
+ 
++The [reference sensitivity study](docs/REFERENCE_SENSITIVITY.md) compares four
++explicit settings against the frozen reference targets. Its CLI verifies saved
++evidence by actually rerunning each configuration in a fresh native process:
++
++```bash
++python experiments/run_reference_sensitivity.py --verify-report experiments/reference_sensitivity_results/results.json
++```
++
++This is a post-hoc diagnostic study. It retains native-default failures and
++uses a changed load window only in its diagnostic contexts. The production
++model, comparator targets and their tolerances keep their recorded identities.
++
+ After the verification and runtime checks described in [VERIFICATION.md](docs/VERIFICATION.md):
+ 
+ ```bash
+--- a/README.md
++++ b/README.md
+@@ -139,10 +139,16 @@
+ the included examples. The report identifies the known reference mismatches.
+ [DEVELOPMENT.md](DEVELOPMENT.md) covers formatting, tests, replay identity and packaging.
+ 
+-The [14 October 2026 review](docs/REVIEW_2026-10-14.md) records the latest local
+-checks, dependency update and release-packaging repair.
++The [14 October 2026 review](docs/REVIEW_2026-10-14.md) records the dependency
++update and release-packaging repair. The [follow-up](docs/FOLLOWUP_2026-10-14.md)
++records Git source fixes, reference diagnostics and the latest local checks.
+ [GitHub readiness](docs/GITHUB_READINESS.md), [contribution guidance](CONTRIBUTING.md)
+ and [security reporting](SECURITY.md) cover repository preparation.
++
++The follow-up [reference sensitivity study](docs/REFERENCE_SENSITIVITY.md) runs
++the same 56 targets with explicit load-window and convergence controls. Git
++source preparation now excludes custom-directory SQLite data and preserves
++recorded CSV evidence bytes.
+ 
+ ## Repository guide
+ 
+--- /dev/null
++++ b/backend/tests/test_git_source.py
+@@ -0,0 +1,86 @@
++"""Git source preparation must preserve evidence and exclude live storage."""
++
++import sqlite3
++import subprocess
++from pathlib import Path
++
++import pytest
++
++ROOT = Path(__file__).resolve().parents[2]
++
++
++@pytest.fixture
++def repository(tmp_path):
++    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True, capture_output=True)
++    for name in (".gitignore", ".gitattributes"):
++        (tmp_path / name).write_bytes((ROOT / name).read_bytes())
++    return tmp_path
++
++
++@pytest.mark.parametrize("extension", [".sqlite", ".sqlite3", ".db"])
++def test_git_excludes_live_database_and_journals_in_custom_directory(repository, extension):
++    path = repository / "backend/local-data" / ("gridsense" + extension)
++    path.parent.mkdir(parents=True)
++    source = repository / "backend/example.py"
++    source.write_text("value = 1\n")
++    with sqlite3.connect(path) as db:
++        db.execute("PRAGMA journal_mode=WAL")
++        db.execute("CREATE TABLE session_state (value TEXT)")
++        db.execute("INSERT INTO session_state VALUES ('runtime state')")
++        db.commit()
++        files = {p.relative_to(repository).as_posix() for p in path.parent.iterdir()}
++        assert len(files) == 3
++        ignored = subprocess.run(
++            ["git", "check-ignore", "--stdin"],
++            cwd=repository,
++            input="\n".join(sorted(files)) + "\n",
++            text=True,
++            capture_output=True,
++            check=True,
++        )
++        assert set(ignored.stdout.splitlines()) == files
++        kept = subprocess.run(
++            ["git", "check-ignore", "--quiet", "backend/example.py"],
++            cwd=repository,
++            capture_output=True,
++            check=False,
++        )
++        assert kept.returncode == 1
++
++
++@pytest.mark.parametrize("autocrlf", ["true", "false"])
++def test_git_preserves_real_csv_evidence_bytes_under_newline_modes(repository, autocrlf):
++    subprocess.run(["git", "config", "core.autocrlf", autocrlf], cwd=repository, check=True)
++    names = [
++        "experiments/challenge_results/outcomes.csv",
++        "experiments/challenge_discovery/outcomes.csv",
++        "backend/gridsense/circuits/ieee13/IEEE13Node_BusXY.csv",
++    ]
++    for name in names:
++        destination = repository / name
++        destination.parent.mkdir(parents=True, exist_ok=True)
++        destination.write_bytes((ROOT / name).read_bytes())
++    subprocess.run(["git", "add", ".gitattributes", *names], cwd=repository, check=True)
++    for name in names:
++        stored = subprocess.check_output(["git", "show", ":" + name], cwd=repository)
++        assert stored == (ROOT / name).read_bytes()
++
++
++@pytest.mark.parametrize("name", [".gitignore", ".gitattributes"])
++def test_source_protection_configuration_changes_invalidate_verification(
++    repository, monkeypatch, name
++):
++    monkeypatch.syspath_prepend(str(ROOT / "scripts"))
++    from release_support import verification_inputs
++
++    (repository / "pyproject.toml").write_text("[project]\nname='example'\n")
++    (repository / "requirements-dev.lock").write_text("dependency==1\n")
++    before = verification_inputs(repository)
++    rule = (
++        "!backend/local-data/gridsense.sqlite3\n"
++        if name == ".gitignore"
++        else "experiments/**/*.csv text eol=lf\n"
++    )
++    with (repository / name).open("a") as target:
++        target.write(rule)
++    assert verification_inputs(repository) != before
+--- /dev/null
++++ b/backend/tests/test_reference_sensitivity.py
+@@ -0,0 +1,57 @@
++"""Native controls isolate constitutive assumptions from solve precision."""
++
++import copy
++from pathlib import Path
++
++import pytest
++
++from gridsense import ieee13
++
++
++@pytest.fixture(scope="module")
++def study():
++    import sys
++
++    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "experiments"))
++    import run_reference_sensitivity
++
++    return run_reference_sensitivity, run_reference_sensitivity.run_study()
++
++
++def test_native_controls_match_load_law_and_preserve_default_model(study):
++    _, report = study
++    rows = {row["configuration"]: row for row in report["rows"]}
++    original, combined = rows["native-defaults"], rows["combined"]
++    assert report["diagnostic_controls_matched"]
++    assert not report["native_default_reference_passed"]
++    native = original["load_675b"]
++    settings = original["effective_settings"]
++    assert native["voltage_on_load_base_pu"] > settings["vmaxpu"]
++    expected = (
++        settings["nominal_kw"] * (native["voltage_on_load_base_pu"] / settings["vmaxpu"]) ** 2
++    )
++    assert native["actual_kw"] == pytest.approx(expected, abs=0.05)
++    assert (
++        combined["load_675b"]["voltage_on_load_base_pu"] < combined["effective_settings"]["vmaxpu"]
++    )
++    assert combined["load_675b"]["actual_kw"] == pytest.approx(settings["nominal_kw"], abs=0.05)
++    assert combined["passed_checks"] == combined["total_checks"] == 56
++    assert max(abs(v) for v in combined["balance"]["residual_kw_kvar"]) < 1e-5
++    ctx = ieee13.context()
++    ctx.Loads.Name("675b")
++    assert ctx.Loads.Vmaxpu() == 1.05
++    assert ctx.Solution.Convergence() == 1e-4
++
++
++@pytest.mark.parametrize("damage", ["baseline-status", "counts", "targets"])
++def test_saved_diagnostic_cannot_relabel_baseline_or_forge_results(study, damage):
++    runner, actual = study
++    saved = copy.deepcopy(actual)
++    if damage == "baseline-status":
++        saved["native_default_reference_passed"] = True
++    elif damage == "counts":
++        saved["rows"][0]["passed_checks"] = 56
++    else:
++        saved["frozen_targets_and_tolerances"]["power_tolerance_kw_kvar"] = 2.0
++    with pytest.raises(ValueError, match="differs from actual native"):
++        runner.compare_reports(saved, actual)
+--- /dev/null
++++ b/docs/FOLLOWUP_2026-10-14.md
+@@ -0,0 +1,77 @@
++# GridSense follow-up: source preparation and reference controls
++
++Completed on 14 October 2026 by Codex (automated). Application version: 0.4.4.
++
++## Preserved checkpoint
++
++The reviewed ZIP was preserved before this work. Its 27,217,913 bytes have
++SHA-256 `4c1d625a3c100002720ab3d58110dc71ba5fa92a85fb8baefa19920dfd2532ff`.
++The initial review's complete verification is archived under
++[checkpoint checks](verification/review-2026-10-14/checkpoint-checks/verification.json).
++The [initial review](REVIEW_2026-10-14.md) retains its dependency audits,
++packaging fixes and extracted-package smoke record.
++
++## Reproduced findings and changes
++
++| Finding | Reproduction | Change |
++| --- | --- | --- |
++| Git could stage runtime data outside the default directory. | An actual SQLite database, WAL and SHM in `backend/local-data/` were eligible for staging. | `.gitignore` excludes `.sqlite`, `.sqlite3` and `.db` files and their journals anywhere. Seven Git regressions cover databases, CSV staging and configuration fingerprints. |
++| Git changed two archived CSV files' bytes. | Default text normalization replaced their original CRLF line endings in the Git index. Their numerical contents did not change. | `.gitattributes` preserves recorded experimental CSVs byte for byte. The index was renormalized; production CSV working files retain their checkpoint hashes. |
++| Reference settings needed a complete, isolated comparison. | Original defaults retain the three Load 675b mismatches and active-power balance mismatch. | A fresh native process runs each of four configurations against the same 56 frozen targets. Four native regressions check the load law, preserved defaults and rejection of altered results. |
++
++Git ignore/attribute configuration is now part of the verified-input
++fingerprint, so weakening either protection requires fresh verification.
++The [Git export record](verification/followup-2026-10-14/git-source.json)
++checks every signed source/configuration/evidence file against a staged Git
++archive. Built frontend assets remain separately verified for the release ZIP.
++
++## Electrical result
++
++| Diagnostic configuration | Passed checks |
++| --- | ---: |
++| Native defaults | 52/56 |
++| Tighter convergence only | 53/56 |
++| Wider 675b constant-power window only | 56/56 |
++| Both controls | 56/56 |
++
++The three 675b differences follow the native load model's upper-voltage
++impedance branch. Tight convergence removes the balance mismatch; the solved
++load-window configuration also changes the numerical residual. The original
++simulation inputs, frozen targets and acceptance tolerances remain intact.
++The 56/56 outcomes describe explicitly changed diagnostic contexts.
++[Study design, interpretation and reproduction](REFERENCE_SENSITIVITY.md).
++
++The saved study is checked against actual native execution by
++`scripts/verify.py`. This post-hoc comparison establishes the effect of the
++declared settings in the healthy reference circuit. It does not establish
++field-grid or restoration validity, or justify silently changing production
++physics. The independent model-aware report also retains its separate scope.
++
++## Verification and delivery
++
++Complete local Linux verification passes 284 backend and 38 browser cases,
++with zero failures, skips, errors or flaky browser cases. Of 29 runner steps,
++28 pass and one explicitly retains the known original reference mismatch.
++The running native backend and built frontend return HTTP 200; six exports
++strictly replay. Desktop and phone geometry checks, topology labels,
++JavaScript/network checks and process-restart recovery pass.
++[Latest verification](VERIFICATION.md),
++[complete raw report](verification/checks/verification.json).
++
++The locked environment and compatible test browser from the initial review
++were reused. New dependency audits and full benchmark campaign reruns were
++not needed for these source-tooling and diagnostic changes. An initial
++follow-up run passed both suites but found a formatting issue in one new
++test; formatting was corrected and the complete runner repeated.
++
++The release ZIP contains source, locked dependencies, the verified frontend,
++new diagnostic results, current and earlier verification, and the
++[incremental source patch](reviews/followup-2026-10-14.patch). The patch is
++against `GridSense_Reviewed.zip`; regenerate verification after applying it.
++Release tooling checks source/build identity, CRCs and all manifest hashes.
++Environments, runtime databases and new runtime screenshots are excluded.
++
++No remote repository was published. A repository destination, enabled GitHub
++integration and the owner's license/copyright decision are needed for that
++next step. Windows and hosted CI execution, independent human reviews and
++field validation remain pending. [GitHub readiness](GITHUB_READINESS.md).
+--- a/docs/GITHUB_READINESS.md
++++ b/docs/GITHUB_READINESS.md
+@@ -2,8 +2,9 @@
+ 
+ Use the extracted `gridsense/` directory as the repository root. It contains
+ the workflow, lockfiles, tests, model provenance, third-party notices and
+-documentation. See the [dated review](REVIEW_2026-10-14.md) for executed local
+-checks and outstanding validation.
++documentation. See the [initial review](REVIEW_2026-10-14.md) and
++[follow-up](FOLLOWUP_2026-10-14.md) for executed local checks and outstanding
++validation.
+ 
+ ## Included repository files
+ 
+@@ -16,6 +17,12 @@
+ | `SECURITY.md` | Local-use scope and private vulnerability-reporting guidance |
+ | `.gitignore` | Excludes environments, caches, built frontend and runtime data from the source repository |
+ | `.gitattributes` | LF source identity and byte-exact bundled reference files |
++
++Custom-directory SQLite databases and their journal files are ignored by Git,
++as well as excluded from the release packager. Recorded experiment CSV files
++retain their exact bytes when staged, including their original line endings.
++Regression checks exercise real SQLite/WAL files and both Git `core.autocrlf`
++settings using the included CSV evidence.
+ 
+ The source repository excludes `frontend/dist/`; `npm ci` and `npm run build`
+ recreate it. The standalone release ZIP includes the verified build. The
+--- /dev/null
++++ b/docs/REFERENCE_SENSITIVITY.md
+@@ -0,0 +1,60 @@
++# Reference settings sensitivity
++
++This post-hoc study isolates the settings behind the four original electrical
++reference mismatches. It applies the same 29 voltage and 27 supplementary
++targets to each complete configuration. The frozen target values and tolerances
++are retained. Each configuration runs in a separate native worker process.
++
++| Configuration | Load 675b VMaxpu | Convergence tolerance | Checks passed | Failed comparisons |
++| --- | ---: | ---: | ---: | --- |
++| Native defaults | 1.05 | 1e-4 | 52/56 | 675b current/P/Q; active-power balance |
++| Precision only | 1.05 | 1e-8 | 53/56 | 675b current/P/Q |
++| Wider constant-power window | 1.10 | 1e-4 | 56/56 | None |
++| Both controls | 1.10 | 1e-8 | 56/56 | None |
++
++[Complete results](../experiments/reference_sensitivity_results/results.json)
++record every comparison, actual settings, load voltage/power, residuals, source
++hashes and native solver identity. [Runner](../experiments/run_reference_sensitivity.py).
++
++## Interpretation
++
++Load 675b operates above its native VMaxpu of 1.05. The documented native
++load model uses an impedance branch above that threshold, explaining why
++actual P/Q differ from the comparator's constant-power expectations.
++[DSS load documentation](https://dss-extensions.org/dss-format/Load.html).
++The native regression independently checks that its power follows
++`nominal_kw × (voltage_on_load_base_pu / vmaxpu)²` within the existing numerical
++allowance. In the wider-window context the same operating voltage remains
++inside the constant-power window, and actual power matches its nominal target.
++
++Precision alone removes the active-power balance mismatch. Changing the load
++window also brings that residual inside the frozen allowance in this case;
++the residual depends on the solved configuration. Tight convergence reduces
++both models' active/reactive residuals below 1e-5 kW/kvar. It does not remove
++the constitutive-model differences under the native load window.
++
++The 56/56 results belong to explicitly changed diagnostic models. Production
++simulation inputs retain native defaults. The original primary comparison
++therefore remains 52/56. This study adds evidence about the causes and the
++effect of explicit settings, rather than promoting a changed configuration
++as the original model. A production model revision would need its own
++versioned inputs, acceptance criteria and affected experimental reruns.
++
++These settings were selected after inspecting existing failures. The study
++is a diagnostic control, not an unseen confirmatory experiment. Current
++targets are derived from published voltages/PQ; balance is internal numerical
++consistency. Full voltage agreement does not validate field devices, added
++ties, protection, operating ratings or restoration behavior.
++
++## Reproduce
++
++```bash
++python experiments/run_reference_sensitivity.py --output var/reference-sensitivity.json
++python experiments/run_reference_sensitivity.py --verify-report experiments/reference_sensitivity_results/results.json
++```
++
++The runner refuses changed frozen targets, checks actual configuration
++agreement across voltage and supplementary solves, and compares saved
++source/settings/results with a fresh native execution. Regression cases
++reject relabelled baseline status, forged counts and changed tolerances.
++The standard verification runner includes this check.
+--- a/docs/REVIEW_2026-10-14.md
++++ b/docs/REVIEW_2026-10-14.md
+@@ -10,7 +10,7 @@
+ and one explicitly retained scientific-reference mismatch. Two reproduced
+ release issues were fixed, and repository checks and contribution files were added.
+ 
+-[Verification](VERIFICATION.md), [raw current results](verification/checks/verification.json)
++[Latest verification](VERIFICATION.md), [raw current results](verification/review-2026-10-14/checkpoint-checks/verification.json)
+ and the [source patch](reviews/changes-2026-10-14.patch) provide the evidence.
+ 
+ ## Findings and changes
+--- a/docs/VERIFICATION.md
++++ b/docs/VERIFICATION.md
+@@ -1,46 +1,69 @@
+ # Verification
+ 
+-## Latest local review: 14 October 2026
+-
+-The reviewed GridSense 0.4.4 source passed the complete local Linux verification.
+-Fresh locked Python and Node dependencies were installed; the frontend lock now
+-uses source-map-js 1.2.2. Compatible Chromium 153.0.8010.0 was installed separately
+-for verification after the standard Playwright download failed.
+-[Installation record](verification/review-2026-10-14/installation.json).
++## Latest local follow-up: 14 October 2026
++
++GridSense 0.4.4 passed complete local Linux verification after the Git source
++fixes and reference sensitivity study. The simulation modules, model inputs
++and recorded experimental CSV bytes retain the reviewed checkpoint's hashes.
+ 
+ | Suite | Passed | Failed | Skipped | Errors |
+ | --- | ---: | ---: | ---: | ---: |
+-| Backend | 273 | 0 | 0 | 0 |
++| Backend | 284 | 0 | 0 | 0 |
+ | Browser | 38 | 0 | 0 | 0 |
+ 
+ There are zero flaky browser cases. The current
+-[verification record](verification/checks/verification.json) has 28 steps:
+-27 passed and one retains the known scientific reference mismatch. Python lint
+-is now part of verification. The [runtime report](verification/checks/runtime/runtime.json)
+-records real native readiness and frontend HTTP 200, six matched workflow replays,
+-all eight topology connections, clear labels and no checked viewport overflow,
++[verification record](verification/checks/verification.json) contains 29 steps:
++28 passed and one retains the known electrical-reference mismatch. The
++[runtime report](verification/checks/runtime/runtime.json) records native
++readiness and frontend HTTP 200, six matched workflow replays, all eight
++connections, clear topology labels and no checked viewport overflow,
+ JavaScript errors or failed network requests. The
+-[restart report](verification/checks/restart/restart.json) records recovery of
+-committed commands and identical retries.
+-
+-The [dated review](REVIEW_2026-10-14.md) describes the dependency and SQLite
+-packaging fixes, new repository guidance, advisory audits and outstanding items.
+-The four original electrical mismatches remain explicit; the separately named
+-model-aware reference passes. Included studies were checked for identity,
+-accounting and replay as configured by the verification runner. This review did
+-not rerun every complete benchmark campaign. Runtime screenshots were generated
+-for local checks; the current package includes the text and JSON evidence.
++[restart report](verification/checks/restart/restart.json) records recovery
++of committed commands and identical retries.
++
++Seven new Git regression cases cover actual custom-directory SQLite/WAL/SHM
++files, exact CSV staging under both autocrlf settings, and invalidation when
++ignore/attribute protection changes. Four new native diagnostic cases check
++load-law behavior, preservation of original defaults and rejection of altered
++reference reports. The [follow-up report](FOLLOWUP_2026-10-14.md) describes
++these changes and the checked Git export.
++
++The [reference sensitivity study](REFERENCE_SENSITIVITY.md) reruns the same
++56 frozen targets in four isolated configurations. Native defaults remain
++52/56; precision alone gives 53/56; a wider load window, with or without tight
++convergence, gives 56/56. These post-hoc diagnostic configurations do not
++replace production inputs or the original result. The saved report is compared
++with fresh native execution by the standard verification runner. Included
++studies otherwise retain their recorded scope; complete benchmark campaigns
++were not all rerun. Runtime screenshots remain local to verification.
++
++## Reviewed checkpoint: 14 October 2026
++
++The [initial review](REVIEW_2026-10-14.md) passed 273 backend and 38 browser
++cases; its 28 steps comprise 27 passes and the known reference mismatch.
++Its complete reports are retained in
++[checkpoint checks](verification/review-2026-10-14/checkpoint-checks/verification.json).
++The reviewed ZIP is preserved before this follow-up. Its SHA-256 is
++`4c1d625a3c100002720ab3d58110dc71ba5fa92a85fb8baefa19920dfd2532ff`.
++
++That review installed fresh locked Python and Node dependencies, updated
++source-map-js to 1.2.2, fixed custom-directory SQLite release exclusions and
++added repository guidance and Python lint. Recorded Python and npm advisory
++audits reported no known vulnerabilities at execution. Compatible Chromium
++153.0.8010.0 was installed separately after the standard Playwright download
++failed. [Installation record](verification/review-2026-10-14/installation.json).
++
++The checkpoint's
++[extracted-package smoke record](verification/review-2026-10-14/extracted-package.json)
++checks its candidate CRCs and all manifest hashes, actual extracted-source
++imports, native/frontend HTTP 200 and an eight-tick outage/repair workflow
++with strict replay in a path containing spaces and Unicode. Dependencies
++were reused. That record belongs to the initial review candidate, not a new
++full extracted-environment installation for this follow-up.
+ 
+ Failed browser-provisioning attempts are retained under
+-`verification/review-2026-10-14/attempts/`. Their reports are historical setup
+-attempts, separate from the successful current verification. Windows execution,
+-hosted CI, external human review and the project license choice remain open.
+-
+-The [extracted-package smoke record](verification/review-2026-10-14/extracted-package.json)
+-checks CRCs and all candidate manifest hashes, actual extracted-source imports,
+-native/frontend HTTP 200 and an eight-tick outage/repair workflow with matched
+-strict replay. The source path contains spaces and Unicode. Existing dependencies
+-were reused, and source/build fingerprints match the full verified workspace.
++`verification/review-2026-10-14/attempts/`. Windows execution, hosted CI,
++external human review and owner license selection remain open.
+ 
+ ## Original release record: 12 October 2026
+ 
+--- a/docs/reviews/STATUS.json
++++ b/docs/reviews/STATUS.json
+@@ -25,7 +25,7 @@
+     "status": "source_and_restart_verified",
+     "date": "2026-10-14",
+     "evidence": "../verification/checks/restart/restart.json",
+-    "scope": "Fresh source environment: 273 backend and 38 browser cases; native backend and built frontend HTTP 200; all six runtime exports replayed; pending-command restart and identical retry verified."
++    "scope": "Follow-up source: 284 backend and 38 browser cases; native backend and built frontend HTTP 200; all six runtime exports replayed; pending-command restart and identical retry verified. Locked environment from the initial review reused."
+   },
+   "fresh_dependency_install": {
+     "status": "locked_dependencies_installed_linux",
+@@ -37,7 +37,7 @@
+     "status": "passed_with_existing_dependencies",
+     "date": "2026-10-14",
+     "evidence": "../verification/review-2026-10-14/extracted-package.json",
+-    "scope": "Candidate ZIP CRC and all 363 manifest file hashes checked; extracted source path with spaces/Unicode loaded its own Python module and bundled frontend. Real native health/frontend HTTP 200; eight-tick outage/repair reached normal supply and strictly replayed. Installed dependencies reused; source and build fingerprints match the complete source-workspace verification."
++    "scope": "Initial reviewed candidate ZIP: CRC and all 363 manifest file hashes checked; extracted source path with spaces/Unicode loaded its own Python module and bundled frontend. Real native health/frontend HTTP 200; eight-tick outage/repair reached normal supply and strictly replayed. Installed dependencies reused; this is the initial-review candidate smoke check, not a new follow-up extraction."
+   },
+   "automated_code_review": {
+     "status": "completed_with_fixes_and_open_items",
+@@ -47,5 +47,20 @@
+     "backend_passed": 273,
+     "browser_passed": 38,
+     "scope": "Code and release-tooling review with local Linux automated verification. External human and power-systems reviews remain separate pending items."
++  },
++  "automated_followup": {
++    "status": "completed_with_fixes_and_open_items",
++    "reviewer": "Codex (automated)",
++    "date": "2026-10-14",
++    "report": "../FOLLOWUP_2026-10-14.md",
++    "backend_passed": 284,
++    "browser_passed": 38,
++    "scope": "Git source exclusions and byte identity; signed ignore/attribute configuration; four complete isolated native reference controls against unchanged targets. Production simulation sources/model inputs unchanged. Local Linux full verification rerun; Windows, hosted CI and external human reviews remain pending."
++  },
++  "git_source_export": {
++    "status": "signed_inputs_byte_identity_checked",
++    "date": "2026-10-14",
++    "evidence": "../verification/followup-2026-10-14/git-source.json",
++    "scope": "Staged Git archive matches every source/configuration/evidence hash in the successful follow-up verification. Built frontend assets are separately verified for release packaging."
+   }
+ }
+--- /dev/null
++++ b/experiments/reference_sensitivity_results/results.json
+@@ -0,0 +1,2556 @@
++{
++  "kind": "reference-settings-sensitivity",
++  "schema_version": 1,
++  "verified_at": "2026-10-14T15:48:25.638067+00:00",
++  "design": "Post-hoc controls selected after inspecting the original mismatches; not blind confirmatory evidence",
++  "inputs_sha256": {
++    "experiments/run_reference_sensitivity.py": "4da401f4d6a6562cdd670094870f47c6ad57d2b1689089117ffc318f2a530cd3",
++    "experiments/protocols/electrical.json": "7648402dcbfc3b61ff183d2448922ec437bc9c08c02e838ee4796b3334267774",
++    "backend/gridsense/ieee13.py": "b127a9822f9e1b7758eb9016e01414233b097c903e01e35d5826d939a1f678c8",
++    "backend/gridsense/reference_checks.py": "c20bd6247d0cfb516d9acc79c3d1890df787b28ac25dd9fdf5697f5684653e70",
++    "backend/gridsense/circuits/ieee13/model.dss": "e78ad86910eb7e03de4cc09dbffdb508061a2030617e4e928ba16674e983adae",
++    "backend/gridsense/circuits/ieee13/reference.json": "44bd63ba5edbf8ab7a2f6d9b77008ec36017940f676a06c0472bbb24aed544f9"
++  },
++  "frozen_targets_and_tolerances": {
++    "schema_version": 1,
++    "frozen_date": "2026-09-22",
++    "source_url": "https://sites.ecse.rpi.edu/~vanfrl/documents/mscthesis/2018_Marcelo_Thesis.pdf",
++    "author": "Marcelo de Castro Fernandes",
++    "title": "Modeling and Simulation of Integrated Transmisson and Distribution Systems to Assess the Impacts of Distributed Energy Resources",
++    "year_on_cover": 2017,
++    "provenance_note": "Filename says 2018; cover and catalogue say 2017. Tables visually checked. Existing archived voltage-reference metadata remains byte-exact for replay compatibility.",
++    "tables": {
++      "voltage": "Table 13, printed page 51, Official Results column",
++      "transformer": "Table 18, printed page 72",
++      "load_power": "Table 21, printed page 73"
++    },
++    "interpretation": "Expected current is analytically derived from independently published P, Q and phase voltage, not a published current result. Constant-PQ wye loads only. No restoration ties in this reference circuit.",
++    "current_formula": "hypot(P_kW,Q_kvar)/(voltage_pu * base_LL_kV/sqrt(3))",
++    "current_relative_tolerance": 0.01,
++    "current_absolute_floor_a": 0.1,
++    "power_tolerance_kw_kvar": 0.05,
++    "loading_tolerance_percentage_points": 1.0,
++    "balance_tolerance_kw_kvar": 0.05,
++    "tolerance_reason": "Frozen before observing these outputs. A 1% current allowance covers rounded reference voltages and disclosed model differences; 0.05 kW/kvar for constant-power and internal balance checks is a numerical allowance, not an operational standard.",
++    "xfm1": {
++      "kva": 500,
++      "lv_ll_kv": 0.48
++    },
++    "loads": [
++      {
++        "name": "634a",
++        "phase": 1,
++        "kw": 160,
++        "kvar": 110,
++        "voltage_pu": 0.994,
++        "base_ll_kv": 0.48
++      },
++      {
++        "name": "634b",
++        "phase": 2,
++        "kw": 120,
++        "kvar": 90,
++        "voltage_pu": 1.0218,
++        "base_ll_kv": 0.48
++      },
++      {
++        "name": "634c",
++        "phase": 3,
++        "kw": 120,
++        "kvar": 90,
++        "voltage_pu": 0.996,
++        "base_ll_kv": 0.48
++      },
++      {
++        "name": "645",
++        "phase": 2,
++        "kw": 170,
++        "kvar": 125,
++        "voltage_pu": 1.0329,
++        "base_ll_kv": 4.16
++      },
++      {
++        "name": "675a",
++        "phase": 1,
++        "kw": 485,
++        "kvar": 190,
++        "voltage_pu": 0.9835,
++        "base_ll_kv": 4.16
++      },
++      {
++        "name": "675b",
++        "phase": 2,
++        "kw": 68,
++        "kvar": 60,
++        "voltage_pu": 1.0553,
++        "base_ll_kv": 4.16
++      },
++      {
++        "name": "675c",
++        "phase": 3,
++        "kw": 290,
++        "kvar": 212,
++        "voltage_pu": 0.9758,
++        "base_ll_kv": 4.16
++      }
++    ]
++  },
++  "rows": [
++    {
++      "configuration": "native-defaults",
++      "declared_overrides": {
++        "vmaxpu_675b": null,
++        "convergence_tolerance": null
++      },
++      "effective_settings": {
++        "model": 1,
++        "vminpu": 0.95,
++        "vmaxpu": 1.05,
++        "load_base_kv": 2.4,
++        "nominal_kw": 68.0,
++        "nominal_kvar": 60.0,
++        "convergence_tolerance": 0.0001
++      },
++      "converged": true,
++      "passed": false,
++      "passed_checks": 52,
++      "total_checks": 56,
++      "failed_checks": [
++        "load-current-675b",
++        "load-kw-675b",
++        "load-kvar-675b",
++        "power-balance-kW"
++      ],
++      "checks": [
++        {
++          "id": "voltage-632.1",
++          "category": "published-phase-voltage",
++          "expected": 1.021,
++          "actual": 1.0207826462701877,
++          "absolute_error": 0.00021735372981224188,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-632.2",
++          "category": "published-phase-voltage",
++          "expected": 1.042,
++          "actual": 1.0418123596807698,
++          "absolute_error": 0.00018764031923024227,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-632.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0174,
++          "actual": 1.0175022232323818,
++          "absolute_error": 0.00010222323238173736,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.1",
++          "category": "published-phase-voltage",
++          "expected": 1.018,
++          "actual": 1.017752854310639,
++          "absolute_error": 0.00024714568936090586,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0401,
++          "actual": 1.0399173064690532,
++          "absolute_error": 0.00018269353094679808,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0148,
++          "actual": 1.014890771681877,
++          "absolute_error": 9.077168187698881e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.1",
++          "category": "published-phase-voltage",
++          "expected": 0.994,
++          "actual": 0.9937730822183587,
++          "absolute_error": 0.0002269177816413004,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0218,
++          "actual": 1.0215581317181848,
++          "absolute_error": 0.00024186828181527176,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.3",
++          "category": "published-phase-voltage",
++          "expected": 0.996,
++          "actual": 0.9960628632583701,
++          "absolute_error": 6.286325837012718e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-645.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0329,
++          "actual": 1.032640167908478,
++          "absolute_error": 0.00025983209152191655,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-645.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0155,
++          "actual": 1.015525891517889,
++          "absolute_error": 2.5891517889009563e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-646.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0311,
++          "actual": 1.030902767022278,
++          "absolute_error": 0.0001972329777220061,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-646.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0134,
++          "actual": 1.0134656925596384,
++          "absolute_error": 6.569255963828624e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893738110291423,
++          "absolute_error": 0.000626188970857644,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0532726304454831,
++          "absolute_error": 0.0003726304454831908,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9778,
++          "actual": 0.978979885618102,
++          "absolute_error": 0.0011798856181020057,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893738236324192,
++          "absolute_error": 0.0006261763675807774,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.053272645471675,
++          "absolute_error": 0.00037264547167503714,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9778,
++          "actual": 0.9789798996252843,
++          "absolute_error": 0.0011798996252843086,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-684.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9881,
++          "actual": 0.9874310771457937,
++          "absolute_error": 0.0006689228542062775,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-684.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9758,
++          "actual": 0.9769689740897862,
++          "absolute_error": 0.0011689740897862233,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-611.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9738,
++          "actual": 0.9749720207083676,
++          "absolute_error": 0.0011720207083676382,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-652.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9825,
++          "actual": 0.9818544516822231,
++          "absolute_error": 0.0006455483177769672,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893738017249855,
++          "absolute_error": 0.0006261982750145334,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0532726293069472,
++          "absolute_error": 0.0003726293069472586,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9777,
++          "actual": 0.9789798782487895,
++          "absolute_error": 0.001279878248789501,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9835,
++          "actual": 0.9829157723053005,
++          "absolute_error": 0.0005842276946995684,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0553,
++          "actual": 1.0556103550256606,
++          "absolute_error": 0.0003103550256606802,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9758,
++          "actual": 0.9771393794926982,
++          "absolute_error": 0.001339379492698245,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "load-current-634a",
++          "category": "derived-from-published-values",
++          "expected": 704.8613229711702,
++          "actual": 705.0217586728185,
++          "absolute_error": 0.1604357016482254,
++          "tolerance": 7.048613229711703,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634a",
++          "category": "published-constant-power-allocation",
++          "expected": 160,
++          "actual": 160.00234377979413,
++          "absolute_error": 0.002343779794131251,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634a",
++          "category": "published-constant-power-allocation",
++          "expected": 110,
++          "actual": 109.99634184895507,
++          "absolute_error": 0.0036581510449309462,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-634b",
++          "category": "derived-from-published-values",
++          "expected": 529.7180244326426,
++          "actual": 529.8610701113181,
++          "absolute_error": 0.14304567867554852,
++          "tolerance": 5.297180244326426,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634b",
++          "category": "published-constant-power-allocation",
++          "expected": 120,
++          "actual": 120.00143007446266,
++          "absolute_error": 0.0014300744626609685,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634b",
++          "category": "published-constant-power-allocation",
++          "expected": 90,
++          "actual": 90.00641043510734,
++          "absolute_error": 0.006410435107341073,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-634c",
++          "category": "derived-from-published-values",
++          "expected": 543.4396359089097,
++          "actual": 543.3816984536234,
++          "absolute_error": 0.05793745528637828,
++          "tolerance": 5.434396359089098,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634c",
++          "category": "published-constant-power-allocation",
++          "expected": 120,
++          "actual": 119.99627368182794,
++          "absolute_error": 0.0037263181720561533,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634c",
++          "category": "published-constant-power-allocation",
++          "expected": 90,
++          "actual": 89.99409251419281,
++          "absolute_error": 0.005907485807185253,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-645",
++          "category": "derived-from-published-values",
++          "expected": 85.05718067211106,
++          "actual": 85.08035622116701,
++          "absolute_error": 0.023175549055949318,
++          "tolerance": 0.8505718067211107,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-645",
++          "category": "published-constant-power-allocation",
++          "expected": 170,
++          "actual": 170.0008051534288,
++          "absolute_error": 0.0008051534287858431,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-645",
++          "category": "published-constant-power-allocation",
++          "expected": 125,
++          "actual": 125.00633017268821,
++          "absolute_error": 0.0063301726882087905,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675a",
++          "category": "derived-from-published-values",
++          "expected": 220.5148485254263,
++          "actual": 220.64666149661264,
++          "absolute_error": 0.13181297118634916,
++          "tolerance": 2.205148485254263,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675a",
++          "category": "published-constant-power-allocation",
++          "expected": 485,
++          "actual": 485.00748534291967,
++          "absolute_error": 0.007485342919665072,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675a",
++          "category": "published-constant-power-allocation",
++          "expected": 190,
++          "actual": 189.9856997962481,
++          "absolute_error": 0.014300203751901108,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675b",
++          "category": "derived-from-published-values",
++          "expected": 35.779388136206,
++          "actual": 36.20490051256946,
++          "absolute_error": 0.4255123763634572,
++          "tolerance": 0.35779388136206003,
++          "unit": "A",
++          "passed": false
++        },
++        {
++          "id": "load-kw-675b",
++          "category": "published-constant-power-allocation",
++          "expected": 68,
++          "actual": 68.82708062594078,
++          "absolute_error": 0.8270806259407806,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": false
++        },
++        {
++          "id": "load-kvar-675b",
++          "category": "published-constant-power-allocation",
++          "expected": 60,
++          "actual": 60.73351979401516,
++          "absolute_error": 0.7335197940151588,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": false
++        },
++        {
++          "id": "load-current-675c",
++          "category": "derived-from-published-values",
++          "expected": 153.27643515762358,
++          "actual": 153.05803263038607,
++          "absolute_error": 0.2184025272375152,
++          "tolerance": 1.532764351576236,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675c",
++          "category": "published-constant-power-allocation",
++          "expected": 290,
++          "actual": 289.98955158291835,
++          "absolute_error": 0.010448417081647676,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675c",
++          "category": "published-constant-power-allocation",
++          "expected": 212,
++          "actual": 211.9812690444733,
++          "absolute_error": 0.01873095552670634,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-1",
++          "category": "derived-from-published-values",
++          "expected": 704.8613229711702,
++          "actual": 705.0212524852346,
++          "absolute_error": 0.1599295140644017,
++          "tolerance": 7.048613229711703,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-2",
++          "category": "derived-from-published-values",
++          "expected": 529.7180244326426,
++          "actual": 529.879482226539,
++          "absolute_error": 0.1614577938964885,
++          "tolerance": 5.297180244326426,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-3",
++          "category": "derived-from-published-values",
++          "expected": 543.4396359089097,
++          "actual": 543.3582214749896,
++          "absolute_error": 0.0814144339201448,
++          "tolerance": 5.434396359089098,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-loading",
++          "category": "derived-from-published-values",
++          "expected": 117.20213987292313,
++          "actual": 117.22873245314608,
++          "absolute_error": 0.026592580222953188,
++          "tolerance": 1.0,
++          "unit": "%",
++          "passed": true
++        },
++        {
++          "id": "power-balance-kW",
++          "category": "internal-consistency-not-external-validation",
++          "expected": 0,
++          "actual": -0.05212919450099207,
++          "absolute_error": 0.05212919450099207,
++          "tolerance": 0.05,
++          "unit": "kW",
++          "passed": false
++        },
++        {
++          "id": "power-balance-kvar",
++          "category": "internal-consistency-not-external-validation",
++          "expected": 0,
++          "actual": 0.018091905894095817,
++          "absolute_error": 0.018091905894095817,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        }
++      ],
++      "load_675b": {
++        "voltage_on_load_base_pu": 1.056391999231264,
++        "actual_kw": 68.82708062594078,
++        "actual_kvar": 60.73351979401516
++      },
++      "balance": {
++        "source_injection_kw_kvar": [
++          3577.7771677995547,
++          1722.3645292536849
++        ],
++        "loads_kw_kvar": [
++          3467.347803207182,
++          2102.4842838716468
++        ],
++        "capacitors_kw_kvar": [
++          2.1827872842550278e-14,
++          -702.245470174819
++        ],
++        "losses_kw_kvar": [
++          110.48149378687359,
++          322.10762365096303
++        ],
++        "residual_kw_kvar": [
++          -0.05212919450099207,
++          0.018091905894095817
++        ]
++      },
++      "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4"
++    },
++    {
++      "configuration": "precision-only",
++      "declared_overrides": {
++        "vmaxpu_675b": null,
++        "convergence_tolerance": 1e-08
++      },
++      "effective_settings": {
++        "model": 1,
++        "vminpu": 0.95,
++        "vmaxpu": 1.05,
++        "load_base_kv": 2.4,
++        "nominal_kw": 68.0,
++        "nominal_kvar": 60.0,
++        "convergence_tolerance": 1e-08
++      },
++      "converged": true,
++      "passed": false,
++      "passed_checks": 53,
++      "total_checks": 56,
++      "failed_checks": [
++        "load-current-675b",
++        "load-kw-675b",
++        "load-kvar-675b"
++      ],
++      "checks": [
++        {
++          "id": "voltage-632.1",
++          "category": "published-phase-voltage",
++          "expected": 1.021,
++          "actual": 1.0207842918306356,
++          "absolute_error": 0.000215708169364337,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-632.2",
++          "category": "published-phase-voltage",
++          "expected": 1.042,
++          "actual": 1.0418136393322515,
++          "absolute_error": 0.00018636066774857518,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-632.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0174,
++          "actual": 1.0174965411711763,
++          "absolute_error": 9.654117117618988e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.1",
++          "category": "published-phase-voltage",
++          "expected": 1.018,
++          "actual": 1.0177546105892745,
++          "absolute_error": 0.0002453894107254939,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0401,
++          "actual": 1.0399188137924202,
++          "absolute_error": 0.00018118620757978654,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0148,
++          "actual": 1.0148847171920197,
++          "absolute_error": 8.471719201974537e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.1",
++          "category": "published-phase-voltage",
++          "expected": 0.994,
++          "actual": 0.9937748433391652,
++          "absolute_error": 0.00022515666083477992,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0218,
++          "actual": 1.0215609301473823,
++          "absolute_error": 0.00023906985261779035,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.3",
++          "category": "published-phase-voltage",
++          "expected": 0.996,
++          "actual": 0.9960550235280015,
++          "absolute_error": 5.502352800146326e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-645.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0329,
++          "actual": 1.0326417147931128,
++          "absolute_error": 0.0002582852068870878,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-645.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0155,
++          "actual": 1.0155201477407774,
++          "absolute_error": 2.014774077729875e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-646.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0311,
++          "actual": 1.0309043071877884,
++          "absolute_error": 0.00019569281221154533,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-646.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0134,
++          "actual": 1.0134599482944124,
++          "absolute_error": 5.9948294412359715e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893766075419813,
++          "absolute_error": 0.0006233924580186789,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0532738668559396,
++          "absolute_error": 0.00037386685593965296,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9778,
++          "actual": 0.9789705281922113,
++          "absolute_error": 0.0011705281922113064,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893766201453296,
++          "absolute_error": 0.000623379854670425,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0532738818821836,
++          "absolute_error": 0.0003738818821836798,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9778,
++          "actual": 0.9789705421992221,
++          "absolute_error": 0.00117054219922208,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-684.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9881,
++          "actual": 0.9874339128045057,
++          "absolute_error": 0.0006660871954943248,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-684.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9758,
++          "actual": 0.9769594287746312,
++          "absolute_error": 0.001159428774631155,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-611.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9738,
++          "actual": 0.9749622908525643,
++          "absolute_error": 0.0011622908525642517,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-652.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9825,
++          "actual": 0.9818572713262406,
++          "absolute_error": 0.000642728673759474,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893765982378897,
++          "absolute_error": 0.0006234017621102872,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0532738657174077,
++          "absolute_error": 0.00037386571740771757,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9777,
++          "actual": 0.9789705208222529,
++          "absolute_error": 0.001270520822252874,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9835,
++          "actual": 0.9829185958458939,
++          "absolute_error": 0.0005814041541061243,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0553,
++          "actual": 1.0556117991159037,
++          "absolute_error": 0.00031179911590384357,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9758,
++          "actual": 0.9771293477798183,
++          "absolute_error": 0.0013293477798183018,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "load-current-634a",
++          "category": "derived-from-published-values",
++          "expected": 704.8613229711702,
++          "actual": 705.0210235194254,
++          "absolute_error": 0.15970054825515945,
++          "tolerance": 7.048613229711703,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634a",
++          "category": "published-constant-power-allocation",
++          "expected": 160,
++          "actual": 160.00000036969058,
++          "absolute_error": 3.696905821470864e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634a",
++          "category": "published-constant-power-allocation",
++          "expected": 110,
++          "actual": 110.00000052155886,
++          "absolute_error": 5.215588601004129e-07,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-634b",
++          "category": "derived-from-published-values",
++          "expected": 529.7180244326426,
++          "actual": 529.8419905988637,
++          "absolute_error": 0.12396616622118017,
++          "tolerance": 5.297180244326426,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634b",
++          "category": "published-constant-power-allocation",
++          "expected": 120,
++          "actual": 119.99999976497831,
++          "absolute_error": 2.350216874447142e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634b",
++          "category": "published-constant-power-allocation",
++          "expected": 90,
++          "actual": 90.0000000279395,
++          "absolute_error": 2.7939506708207773e-08,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-634c",
++          "category": "derived-from-published-values",
++          "expected": 543.4396359089097,
++          "actual": 543.4096135539669,
++          "absolute_error": 0.030022354942843776,
++          "tolerance": 5.434396359089098,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634c",
++          "category": "published-constant-power-allocation",
++          "expected": 120,
++          "actual": 119.99999984817285,
++          "absolute_error": 1.5182715173978067e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634c",
++          "category": "published-constant-power-allocation",
++          "expected": 90,
++          "actual": 89.99999930110674,
++          "absolute_error": 6.988932597096209e-07,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-645",
++          "category": "derived-from-published-values",
++          "expected": 85.05718067211106,
++          "actual": 85.07845516243681,
++          "absolute_error": 0.02127449032575157,
++          "tolerance": 0.8505718067211107,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-645",
++          "category": "published-constant-power-allocation",
++          "expected": 170,
++          "actual": 169.99999969675596,
++          "absolute_error": 3.0324403610393347e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-645",
++          "category": "published-constant-power-allocation",
++          "expected": 125,
++          "actual": 125.00000006642804,
++          "absolute_error": 6.642804351031373e-08,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675a",
++          "category": "derived-from-published-values",
++          "expected": 220.5148485254263,
++          "actual": 220.64528569471722,
++          "absolute_error": 0.13043716929092852,
++          "tolerance": 2.205148485254263,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675a",
++          "category": "published-constant-power-allocation",
++          "expected": 485,
++          "actual": 485.00000168333344,
++          "absolute_error": 1.683333437085821e-06,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675a",
++          "category": "published-constant-power-allocation",
++          "expected": 190,
++          "actual": 190.0000014336474,
++          "absolute_error": 1.433647412341088e-06,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675b",
++          "category": "derived-from-published-values",
++          "expected": 35.779388136206,
++          "actual": 36.20573839024414,
++          "absolute_error": 0.426350254038141,
++          "tolerance": 0.35779388136206003,
++          "unit": "A",
++          "passed": false
++        },
++        {
++          "id": "load-kw-675b",
++          "category": "published-constant-power-allocation",
++          "expected": 68,
++          "actual": 68.83062439809514,
++          "absolute_error": 0.8306243980951393,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": false
++        },
++        {
++          "id": "load-kvar-675b",
++          "category": "published-constant-power-allocation",
++          "expected": 60,
++          "actual": 60.73290413882844,
++          "absolute_error": 0.7329041388284381,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": false
++        },
++        {
++          "id": "load-current-675c",
++          "category": "derived-from-published-values",
++          "expected": 153.27643515762358,
++          "actual": 153.06790753987698,
++          "absolute_error": 0.20852761774659712,
++          "tolerance": 1.532764351576236,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675c",
++          "category": "published-constant-power-allocation",
++          "expected": 290,
++          "actual": 289.99999956619394,
++          "absolute_error": 4.3380606484788586e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675c",
++          "category": "published-constant-power-allocation",
++          "expected": 212,
++          "actual": 211.99999747458526,
++          "absolute_error": 2.525414743104193e-06,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-1",
++          "category": "derived-from-published-values",
++          "expected": 704.8613229711702,
++          "actual": 705.0210256734213,
++          "absolute_error": 0.15970270225102468,
++          "tolerance": 7.048613229711703,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-2",
++          "category": "derived-from-published-values",
++          "expected": 529.7180244326426,
++          "actual": 529.8419899669965,
++          "absolute_error": 0.12396553435394253,
++          "tolerance": 5.297180244326426,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-3",
++          "category": "derived-from-published-values",
++          "expected": 543.4396359089097,
++          "actual": 543.4096116084246,
++          "absolute_error": 0.030024300485138156,
++          "tolerance": 5.434396359089098,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-loading",
++          "category": "derived-from-published-values",
++          "expected": 117.20213987292313,
++          "actual": 117.22869473958598,
++          "absolute_error": 0.026554866662849008,
++          "tolerance": 1.0,
++          "unit": "%",
++          "passed": true
++        },
++        {
++          "id": "power-balance-kW",
++          "category": "internal-consistency-not-external-validation",
++          "expected": 0,
++          "actual": -7.0130564182591115e-06,
++          "absolute_error": 7.0130564182591115e-06,
++          "tolerance": 0.05,
++          "unit": "kW",
++          "passed": true
++        },
++        {
++          "id": "power-balance-kvar",
++          "category": "internal-consistency-not-external-validation",
++          "expected": 0,
++          "actual": 2.6039589329229784e-07,
++          "absolute_error": 2.6039589329229784e-07,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        }
++      ],
++      "load_675b": {
++        "voltage_on_load_base_pu": 1.0563934443908078,
++        "actual_kw": 68.83062439809514,
++        "actual_kvar": 60.73290413882844
++      },
++      "balance": {
++        "source_injection_kw_kvar": [
++          3577.840681111798,
++          1722.427905755647
++        ],
++        "loads_kw_kvar": [
++          3467.3531726207457,
++          2102.5424135491803
++        ],
++        "capacitors_kw_kvar": [
++          -1.0913936421275139e-14,
++          -702.2413690552368
++        ],
++        "losses_kw_kvar": [
++          110.4875155041087,
++          322.12686100130765
++        ],
++        "residual_kw_kvar": [
++          -7.0130564182591115e-06,
++          2.6039589329229784e-07
++        ]
++      },
++      "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4"
++    },
++    {
++      "configuration": "pq-envelope-only",
++      "declared_overrides": {
++        "vmaxpu_675b": 1.1,
++        "convergence_tolerance": null
++      },
++      "effective_settings": {
++        "model": 1,
++        "vminpu": 0.95,
++        "vmaxpu": 1.1,
++        "load_base_kv": 2.4,
++        "nominal_kw": 68.0,
++        "nominal_kvar": 60.0,
++        "convergence_tolerance": 0.0001
++      },
++      "converged": true,
++      "passed": true,
++      "passed_checks": 56,
++      "total_checks": 56,
++      "failed_checks": [],
++      "checks": [
++        {
++          "id": "voltage-632.1",
++          "category": "published-phase-voltage",
++          "expected": 1.021,
++          "actual": 1.0207797888333328,
++          "absolute_error": 0.00022021116666715024,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-632.2",
++          "category": "published-phase-voltage",
++          "expected": 1.042,
++          "actual": 1.041883757414784,
++          "absolute_error": 0.00011624258521614195,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-632.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0174,
++          "actual": 1.0174786156324167,
++          "absolute_error": 7.861563241662317e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.1",
++          "category": "published-phase-voltage",
++          "expected": 1.018,
++          "actual": 1.0177499510284405,
++          "absolute_error": 0.00025004897155955774,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0401,
++          "actual": 1.0399888503540702,
++          "absolute_error": 0.00011114964592984222,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0148,
++          "actual": 1.0148671633799045,
++          "absolute_error": 6.716337990453347e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.1",
++          "category": "published-phase-voltage",
++          "expected": 0.994,
++          "actual": 0.9937700821890005,
++          "absolute_error": 0.00022991781099945818,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0218,
++          "actual": 1.0216306410046836,
++          "absolute_error": 0.0001693589953164487,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.3",
++          "category": "published-phase-voltage",
++          "expected": 0.996,
++          "actual": 0.9960389607289404,
++          "absolute_error": 3.8960728940384826e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-645.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0329,
++          "actual": 1.0327117362342233,
++          "absolute_error": 0.00018826376577663062,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-645.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0155,
++          "actual": 1.0155021467958134,
++          "absolute_error": 2.1467958133403187e-06,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-646.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0311,
++          "actual": 1.0309742368837056,
++          "absolute_error": 0.00012576311629430847,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-646.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0134,
++          "actual": 1.0134419027202202,
++          "absolute_error": 4.190272022008834e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893722804648506,
++          "absolute_error": 0.0006277195351493958,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0534127042324513,
++          "absolute_error": 0.0005127042324513109,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9778,
++          "actual": 0.9789319667620114,
++          "absolute_error": 0.0011319667620114382,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893722930679788,
++          "absolute_error": 0.0006277069320211881,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0534127192614984,
++          "absolute_error": 0.0005127192614984288,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9778,
++          "actual": 0.9789319807682056,
++          "absolute_error": 0.0011319807682056426,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-684.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9881,
++          "actual": 0.9874295282394903,
++          "absolute_error": 0.0006704717605097166,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-684.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9758,
++          "actual": 0.9769210922717123,
++          "absolute_error": 0.0011210922717123095,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-611.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9738,
++          "actual": 0.9749240954176681,
++          "absolute_error": 0.001124095417668114,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-652.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9825,
++          "actual": 0.9818529115235379,
++          "absolute_error": 0.0006470884764621099,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893722711604748,
++          "absolute_error": 0.0006277288395252212,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0534127031075864,
++          "absolute_error": 0.000512703107586443,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9777,
++          "actual": 0.9789319593925313,
++          "absolute_error": 0.00123195939253129,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9835,
++          "actual": 0.9829090565129756,
++          "absolute_error": 0.0005909434870244867,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0553,
++          "actual": 1.055765151583263,
++          "absolute_error": 0.00046515158326299044,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9758,
++          "actual": 0.9770920533316632,
++          "absolute_error": 0.0012920533316631566,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "load-current-634a",
++          "category": "derived-from-published-values",
++          "expected": 704.8613229711702,
++          "actual": 705.0242482715913,
++          "absolute_error": 0.16292530042107956,
++          "tolerance": 7.048613229711703,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634a",
++          "category": "published-constant-power-allocation",
++          "expected": 160,
++          "actual": 160.00288517785822,
++          "absolute_error": 0.0028851778582179577,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634a",
++          "category": "published-constant-power-allocation",
++          "expected": 110,
++          "actual": 109.99572993876974,
++          "absolute_error": 0.004270061230258193,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-634b",
++          "category": "derived-from-published-values",
++          "expected": 529.7180244326426,
++          "actual": 529.8283164853426,
++          "absolute_error": 0.1102920527000606,
++          "tolerance": 5.297180244326426,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634b",
++          "category": "published-constant-power-allocation",
++          "expected": 120,
++          "actual": 120.00197749977526,
++          "absolute_error": 0.001977499775264846,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634b",
++          "category": "published-constant-power-allocation",
++          "expected": 90,
++          "actual": 90.00797036849673,
++          "absolute_error": 0.007970368496728497,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-634c",
++          "category": "derived-from-published-values",
++          "expected": 543.4396359089097,
++          "actual": 543.3924355497498,
++          "absolute_error": 0.04720035915988774,
++          "tolerance": 5.434396359089098,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634c",
++          "category": "published-constant-power-allocation",
++          "expected": 120,
++          "actual": 119.99572521227915,
++          "absolute_error": 0.004274787720845552,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634c",
++          "category": "published-constant-power-allocation",
++          "expected": 90,
++          "actual": 89.99376442597566,
++          "absolute_error": 0.006235574024344714,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-645",
++          "category": "derived-from-published-values",
++          "expected": 85.05718067211106,
++          "actual": 85.07512244028514,
++          "absolute_error": 0.017941768174082995,
++          "tolerance": 0.8505718067211107,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-645",
++          "category": "published-constant-power-allocation",
++          "expected": 170,
++          "actual": 170.00145548674973,
++          "absolute_error": 0.0014554867497338364,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-645",
++          "category": "published-constant-power-allocation",
++          "expected": 125,
++          "actual": 125.00821916011688,
++          "absolute_error": 0.008219160116880175,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675a",
++          "category": "derived-from-published-values",
++          "expected": 220.5148485254263,
++          "actual": 220.6483932651309,
++          "absolute_error": 0.1335447397046039,
++          "tolerance": 2.205148485254263,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675a",
++          "category": "published-constant-power-allocation",
++          "expected": 485,
++          "actual": 485.00933898267414,
++          "absolute_error": 0.009338982674137242,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675a",
++          "category": "published-constant-power-allocation",
++          "expected": 190,
++          "actual": 189.9824187088047,
++          "absolute_error": 0.017581291195313042,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675b",
++          "category": "derived-from-published-values",
++          "expected": 35.779388136206,
++          "actual": 35.764869291945274,
++          "absolute_error": 0.014518844260727803,
++          "tolerance": 0.35779388136206003,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675b",
++          "category": "published-constant-power-allocation",
++          "expected": 68,
++          "actual": 68.00000279571385,
++          "absolute_error": 2.7957138541978566e-06,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675b",
++          "category": "published-constant-power-allocation",
++          "expected": 60,
++          "actual": 60.00476799275422,
++          "absolute_error": 0.004767992754217687,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675c",
++          "category": "derived-from-published-values",
++          "expected": 153.27643515762358,
++          "actual": 153.06447424725306,
++          "absolute_error": 0.21196091037052156,
++          "tolerance": 1.532764351576236,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675c",
++          "category": "published-constant-power-allocation",
++          "expected": 290,
++          "actual": 289.9874083062188,
++          "absolute_error": 0.012591693781189406,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675c",
++          "category": "published-constant-power-allocation",
++          "expected": 212,
++          "actual": 211.98033630372947,
++          "absolute_error": 0.019663696270526998,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-1",
++          "category": "derived-from-published-values",
++          "expected": 704.8613229711702,
++          "actual": 705.0240991814267,
++          "absolute_error": 0.16277621025642475,
++          "tolerance": 7.048613229711703,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-2",
++          "category": "derived-from-published-values",
++          "expected": 529.7180244326426,
++          "actual": 529.8517991946402,
++          "absolute_error": 0.1337747619976426,
++          "tolerance": 5.297180244326426,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-3",
++          "category": "derived-from-published-values",
++          "expected": 543.4396359089097,
++          "actual": 543.3666722660865,
++          "absolute_error": 0.072963642823197,
++          "tolerance": 5.434396359089098,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-loading",
++          "category": "derived-from-published-values",
++          "expected": 117.20213987292313,
++          "actual": 117.22920579290017,
++          "absolute_error": 0.02706591997704777,
++          "tolerance": 1.0,
++          "unit": "%",
++          "passed": true
++        },
++        {
++          "id": "power-balance-kW",
++          "category": "internal-consistency-not-external-validation",
++          "expected": 0,
++          "actual": -0.046120367061959655,
++          "absolute_error": 0.046120367061959655,
++          "tolerance": 0.05,
++          "unit": "kW",
++          "passed": true
++        },
++        {
++          "id": "power-balance-kvar",
++          "category": "internal-consistency-not-external-validation",
++          "expected": 0,
++          "actual": 0.02140814060538787,
++          "absolute_error": 0.02140814060538787,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        }
++      ],
++      "load_675b": {
++        "voltage_on_load_base_pu": 1.0565469104105465,
++        "actual_kw": 68.00000279571385,
++        "actual_kvar": 60.00476799275422
++      },
++      "balance": {
++        "source_injection_kw_kvar": [
++          3576.955860291901,
++          1721.5648545195927
++        ],
++        "loads_kw_kvar": [
++          3466.529310274704,
++          2101.7606187852484
++        ],
++        "capacitors_kw_kvar": [
++          3.637978807091713e-15,
++          -702.2803404601411
++        ],
++        "losses_kw_kvar": [
++          110.47267038425882,
++          322.06316805388
++        ],
++        "residual_kw_kvar": [
++          -0.046120367061959655,
++          0.02140814060538787
++        ]
++      },
++      "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4"
++    },
++    {
++      "configuration": "combined",
++      "declared_overrides": {
++        "vmaxpu_675b": 1.1,
++        "convergence_tolerance": 1e-08
++      },
++      "effective_settings": {
++        "model": 1,
++        "vminpu": 0.95,
++        "vmaxpu": 1.1,
++        "load_base_kv": 2.4,
++        "nominal_kw": 68.0,
++        "nominal_kvar": 60.0,
++        "convergence_tolerance": 1e-08
++      },
++      "converged": true,
++      "passed": true,
++      "passed_checks": 56,
++      "total_checks": 56,
++      "failed_checks": [],
++      "checks": [
++        {
++          "id": "voltage-632.1",
++          "category": "published-phase-voltage",
++          "expected": 1.021,
++          "actual": 1.0207817844015246,
++          "absolute_error": 0.00021821559847534644,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-632.2",
++          "category": "published-phase-voltage",
++          "expected": 1.042,
++          "actual": 1.0418859770032247,
++          "absolute_error": 0.00011402299677532035,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-632.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0174,
++          "actual": 1.0174721943774356,
++          "absolute_error": 7.219437743555268e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.1",
++          "category": "published-phase-voltage",
++          "expected": 1.018,
++          "actual": 1.0177520741152282,
++          "absolute_error": 0.00024792588477184907,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0401,
++          "actual": 1.0399913597534924,
++          "absolute_error": 0.0001086402465075853,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-633.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0148,
++          "actual": 1.0148603225453228,
++          "absolute_error": 6.032254532284398e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.1",
++          "category": "published-phase-voltage",
++          "expected": 0.994,
++          "actual": 0.9937722437472762,
++          "absolute_error": 0.00022775625272375422,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0218,
++          "actual": 1.02163480832769,
++          "absolute_error": 0.00016519167230999443,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-634.3",
++          "category": "published-phase-voltage",
++          "expected": 0.996,
++          "actual": 0.9960301570594761,
++          "absolute_error": 3.015705947606584e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-645.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0329,
++          "actual": 1.0327143263680878,
++          "absolute_error": 0.00018567363191213104,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-645.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0155,
++          "actual": 1.0154956378747246,
++          "absolute_error": 4.362125275436668e-06,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-646.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0311,
++          "actual": 1.0309768180909034,
++          "absolute_error": 0.00012318190909654803,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-646.3",
++          "category": "published-phase-voltage",
++          "expected": 1.0134,
++          "actual": 1.0134353923476915,
++          "absolute_error": 3.539234769145416e-05,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893757148492442,
++          "absolute_error": 0.0006242851507557434,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0534153709054606,
++          "absolute_error": 0.0005153709054606104,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-671.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9778,
++          "actual": 0.9789214512795426,
++          "absolute_error": 0.0011214512795425513,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893757274524559,
++          "absolute_error": 0.0006242725475440469,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.053415385934591,
++          "absolute_error": 0.000515385934590995,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-680.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9778,
++          "actual": 0.9789214652855415,
++          "absolute_error": 0.0011214652855414675,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-684.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9881,
++          "actual": 0.9874330054338006,
++          "absolute_error": 0.0006669945661993415,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-684.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9758,
++          "actual": 0.976910367292952,
++          "absolute_error": 0.001110367292951997,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-611.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9738,
++          "actual": 0.9749131640773356,
++          "absolute_error": 0.0011131640773356377,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-652.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9825,
++          "actual": 0.9818563690800115,
++          "absolute_error": 0.0006436309199885359,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.1",
++          "category": "published-phase-voltage",
++          "expected": 0.99,
++          "actual": 0.9893757055449554,
++          "absolute_error": 0.0006242944550446383,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0529,
++          "actual": 1.0534153697806854,
++          "absolute_error": 0.0005153697806854485,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-692.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9777,
++          "actual": 0.9789214439093454,
++          "absolute_error": 0.001221443909345421,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.1",
++          "category": "published-phase-voltage",
++          "expected": 0.9835,
++          "actual": 0.9829125021650877,
++          "absolute_error": 0.0005874978349122983,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.2",
++          "category": "published-phase-voltage",
++          "expected": 1.0553,
++          "actual": 1.05576813953902,
++          "absolute_error": 0.00046813953902002936,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "voltage-675.3",
++          "category": "published-phase-voltage",
++          "expected": 0.9758,
++          "actual": 0.9770807860232867,
++          "absolute_error": 0.0012807860232867396,
++          "tolerance": 0.003,
++          "unit": "pu",
++          "passed": true
++        },
++        {
++          "id": "load-current-634a",
++          "category": "derived-from-published-values",
++          "expected": 704.8613229711702,
++          "actual": 705.0228681741879,
++          "absolute_error": 0.16154520301768116,
++          "tolerance": 7.048613229711703,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634a",
++          "category": "published-constant-power-allocation",
++          "expected": 160,
++          "actual": 160.00000042604606,
++          "absolute_error": 4.2604605710039323e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634a",
++          "category": "published-constant-power-allocation",
++          "expected": 110,
++          "actual": 110.00000063514132,
++          "absolute_error": 6.351413190941457e-07,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-634b",
++          "category": "derived-from-published-values",
++          "expected": 529.7180244326426,
++          "actual": 529.8036756305486,
++          "absolute_error": 0.08565119790603148,
++          "tolerance": 5.297180244326426,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634b",
++          "category": "published-constant-power-allocation",
++          "expected": 120,
++          "actual": 119.99999972201924,
++          "absolute_error": 2.779807601882567e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634b",
++          "category": "published-constant-power-allocation",
++          "expected": 90,
++          "actual": 90.00000001907952,
++          "absolute_error": 1.907952196233964e-08,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-634c",
++          "category": "derived-from-published-values",
++          "expected": 543.4396359089097,
++          "actual": 543.4231798924764,
++          "absolute_error": 0.016456016433380682,
++          "tolerance": 5.434396359089098,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-634c",
++          "category": "published-constant-power-allocation",
++          "expected": 120,
++          "actual": 119.9999998435426,
++          "absolute_error": 1.5645740347736137e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-634c",
++          "category": "published-constant-power-allocation",
++          "expected": 90,
++          "actual": 89.9999992168556,
++          "absolute_error": 7.831444008843391e-07,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-645",
++          "category": "derived-from-published-values",
++          "expected": 85.05718067211106,
++          "actual": 85.07247315694897,
++          "absolute_error": 0.015292484837914344,
++          "tolerance": 0.8505718067211107,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-645",
++          "category": "published-constant-power-allocation",
++          "expected": 170,
++          "actual": 169.99999963893583,
++          "absolute_error": 3.610641670093173e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-645",
++          "category": "published-constant-power-allocation",
++          "expected": 125,
++          "actual": 125.00000005529155,
++          "absolute_error": 5.529155089334381e-08,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675a",
++          "category": "derived-from-published-values",
++          "expected": 220.5148485254263,
++          "actual": 220.64665377408738,
++          "absolute_error": 0.13180524866109522,
++          "tolerance": 2.205148485254263,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675a",
++          "category": "published-constant-power-allocation",
++          "expected": 485,
++          "actual": 485.00000195127876,
++          "absolute_error": 1.9512787616804417e-06,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675a",
++          "category": "published-constant-power-allocation",
++          "expected": 190,
++          "actual": 190.00000180567034,
++          "absolute_error": 1.8056703368074523e-06,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675b",
++          "category": "derived-from-published-values",
++          "expected": 35.779388136206,
++          "actual": 35.763523085882476,
++          "absolute_error": 0.015865050323526475,
++          "tolerance": 0.35779388136206003,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675b",
++          "category": "published-constant-power-allocation",
++          "expected": 68,
++          "actual": 67.99999973658933,
++          "absolute_error": 2.634106692767091e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675b",
++          "category": "published-constant-power-allocation",
++          "expected": 60,
++          "actual": 60.000000050247905,
++          "absolute_error": 5.024790539209789e-08,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "load-current-675c",
++          "category": "derived-from-published-values",
++          "expected": 153.27643515762358,
++          "actual": 153.07551507382342,
++          "absolute_error": 0.20092008380015614,
++          "tolerance": 1.532764351576236,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "load-kw-675c",
++          "category": "published-constant-power-allocation",
++          "expected": 290,
++          "actual": 289.9999995776234,
++          "absolute_error": 4.2237661546096206e-07,
++          "tolerance": 0.05,
++          "unit": "kw",
++          "passed": true
++        },
++        {
++          "id": "load-kvar-675c",
++          "category": "published-constant-power-allocation",
++          "expected": 212,
++          "actual": 211.99999716914232,
++          "absolute_error": 2.8308576816016284e-06,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-1",
++          "category": "derived-from-published-values",
++          "expected": 704.8613229711702,
++          "actual": 705.0228707258287,
++          "absolute_error": 0.1615477546584998,
++          "tolerance": 7.048613229711703,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-2",
++          "category": "derived-from-published-values",
++          "expected": 529.7180244326426,
++          "actual": 529.8036748522037,
++          "absolute_error": 0.08565041956114783,
++          "tolerance": 5.297180244326426,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-current-phase-3",
++          "category": "derived-from-published-values",
++          "expected": 543.4396359089097,
++          "actual": 543.423177751805,
++          "absolute_error": 0.016458157104693782,
++          "tolerance": 5.434396359089098,
++          "unit": "A",
++          "passed": true
++        },
++        {
++          "id": "xfm1-lv-loading",
++          "category": "derived-from-published-values",
++          "expected": 117.20213987292313,
++          "actual": 117.22900152913915,
++          "absolute_error": 0.02686165621602754,
++          "tolerance": 1.0,
++          "unit": "%",
++          "passed": true
++        },
++        {
++          "id": "power-balance-kW",
++          "category": "internal-consistency-not-external-validation",
++          "expected": 0,
++          "actual": -7.090544087873241e-06,
++          "absolute_error": 7.090544087873241e-06,
++          "tolerance": 0.05,
++          "unit": "kW",
++          "passed": true
++        },
++        {
++          "id": "power-balance-kvar",
++          "category": "internal-consistency-not-external-validation",
++          "expected": 0,
++          "actual": 1.6607350517006125e-07,
++          "absolute_error": 1.6607350517006125e-07,
++          "tolerance": 0.05,
++          "unit": "kvar",
++          "passed": true
++        }
++      ],
++      "load_675b": {
++        "voltage_on_load_base_pu": 1.0565499005787848,
++        "actual_kw": 67.99999973658933,
++        "actual_kvar": 60.000000050247905
++      },
++      "balance": {
++        "source_injection_kw_kvar": [
++          3577.007350066067,
++          1721.6197839890472
++        ],
++        "loads_kw_kvar": [
++          3466.528799456024,
++          2101.814192437258
++        ],
++        "capacitors_kw_kvar": [
++          -3.637978807091713e-15,
++          -702.2764187564457
++        ],
++        "losses_kw_kvar": [
++          110.47855770058702,
++          322.08201014216127
++        ],
++        "residual_kw_kvar": [
++          -7.090544087873241e-06,
++          1.6607350517006125e-07
++        ]
++      },
++      "solver_version": "DSS C-API Library version 0.14.5 revision 87d85c2622c8281b92255335bc7c09b11191b21d based on OpenDSS SVN 3723 [FPC 3.2.2] (64-bit build) MVMULT INCREMENTAL_Y CONTEXT_API PM 20240329033721; License Status: Open \nDSS-Python version: 0.15.7\nOpenDSSDirect.py version: 0.9.4"
++    }
++  ],
++  "diagnostic_controls_matched": true,
++  "native_default_reference_passed": false,
++  "scope": "Healthy reference circuit only. Changed VMaxpu applies to isolated diagnostic contexts. Original simulation inputs and frozen comparator remain unchanged. Derived currents and internal balances are not independent field observations."
++}
+--- /dev/null
++++ b/experiments/run_reference_sensitivity.py
+@@ -0,0 +1,207 @@
++"""Post-hoc reference-setting controls; keep native-default failures explicit.
++
++Runs the same 56 frozen targets in four isolated native configurations. The
++changed load window belongs to diagnostic contexts, not the simulation model.
++"""
++
++import argparse
++import hashlib
++import json
++import multiprocessing
++from concurrent.futures import ProcessPoolExecutor
++from pathlib import Path
++from unittest.mock import patch
++
++from gridsense import ieee13, reference_checks
++from gridsense.service import _differences, utc_now
++
++ROOT = Path(__file__).resolve().parents[1]
++PROTOCOL = ROOT / "experiments/protocols/electrical.json"
++PROTOCOL_SHA256 = "7648402dcbfc3b61ff183d2448922ec437bc9c08c02e838ee4796b3334267774"
++CONFIGURATIONS = (
++    ("native-defaults", None, None),
++    ("precision-only", None, 1e-8),
++    ("pq-envelope-only", 1.1, None),
++    ("combined", 1.1, 1e-8),
++)
++MODEL_FAILURES = {"load-current-675b", "load-kw-675b", "load-kvar-675b"}
++
++
++def input_hashes():
++    names = (
++        "experiments/run_reference_sensitivity.py",
++        "experiments/protocols/electrical.json",
++        "backend/gridsense/ieee13.py",
++        "backend/gridsense/reference_checks.py",
++        "backend/gridsense/circuits/ieee13/model.dss",
++        "backend/gridsense/circuits/ieee13/reference.json",
++    )
++    return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in names}
++
++
++def evaluate_configuration(configuration, protocol):
++    name, vmax, convergence = configuration
++    original = ieee13.context
++    contexts, settings = [], []
++
++    def configured_context():
++        ctx = original()
++        if vmax is not None:
++            ctx.Text.Command("Edit Load.675b vmaxpu=" + str(vmax))
++        if convergence is not None:
++            ctx.Solution.Convergence(convergence)
++        ctx.Loads.Name("675b")
++        settings.append(
++            {
++                "model": ctx.Loads.Model(),
++                "vminpu": ctx.Loads.Vminpu(),
++                "vmaxpu": ctx.Loads.Vmaxpu(),
++                "load_base_kv": ctx.Loads.kV(),
++                "nominal_kw": ctx.Loads.kW(),
++                "nominal_kvar": ctx.Loads.kvar(),
++                "convergence_tolerance": ctx.Solution.Convergence(),
++            }
++        )
++        contexts.append(ctx)
++        return ctx
++
++    # Both voltage and supplementary targets use the declared configuration.
++    # The original post-hoc diagnostics assume native defaults and are omitted.
++    with (
++        patch.object(ieee13, "context", configured_context),
++        patch.object(reference_checks, "context", configured_context),
++        patch.object(reference_checks, "diagnose_reference", lambda protocol: {}),
++    ):
++        result = reference_checks.validate_extended_reference(protocol)
++    if len(settings) != 2 or settings[0] != settings[1]:
++        raise ValueError("Voltage and supplementary checks used different configurations")
++    checks = [
++        reference_checks.check(
++            "voltage-" + row["node"],
++            "published-phase-voltage",
++            row["published_pu"],
++            row["actual_pu"],
++            result["published_voltage"]["tolerance_pu"],
++            "pu",
++        )
++        for row in result["published_voltage"]["rows"]
++    ] + result["additional_checks"]
++    ctx = contexts[-1]
++    ctx.Loads.Name("675b")
++    return {
++        "configuration": name,
++        "declared_overrides": {"vmaxpu_675b": vmax, "convergence_tolerance": convergence},
++        "effective_settings": settings[0],
++        "converged": result["converged"],
++        "passed": result["passed"],
++        "passed_checks": sum(row["passed"] for row in checks),
++        "total_checks": len(checks),
++        "failed_checks": [row["id"] for row in checks if not row["passed"]],
++        "checks": checks,
++        "load_675b": {
++            "voltage_on_load_base_pu": ctx.CktElement.VoltagesMagAng()[0] / (ctx.Loads.kV() * 1000),
++            "actual_kw": sum(ctx.CktElement.Powers()[::2]),
++            "actual_kvar": sum(ctx.CktElement.Powers()[1::2]),
++        },
++        "balance": result["balance_components"],
++        "solver_version": result["solver_version"],
++    }
++
++
++def run_study():
++    data = PROTOCOL.read_bytes()
++    if hashlib.sha256(data).hexdigest() != PROTOCOL_SHA256:
++        raise ValueError("Frozen reference targets changed")
++    protocol = json.loads(data)
++    before = input_hashes()
++    with ProcessPoolExecutor(
++        max_workers=1,
++        max_tasks_per_child=1,
++        mp_context=multiprocessing.get_context("spawn"),
++    ) as pool:
++        rows = [
++            pool.submit(evaluate_configuration, config, protocol).result()
++            for config in CONFIGURATIONS
++        ]
++    expected = (
++        MODEL_FAILURES | {"power-balance-kW"},
++        MODEL_FAILURES,
++        set(),
++        set(),
++    )
++    matched = all(
++        row["converged"] and row["total_checks"] == 56 and set(row["failed_checks"]) == failures
++        for row, failures in zip(rows, expected, strict=True)
++    )
++    if input_hashes() != before:
++        raise ValueError("Reference-study inputs changed during execution")
++    return {
++        "kind": "reference-settings-sensitivity",
++        "schema_version": 1,
++        "verified_at": utc_now(),
++        "design": "Post-hoc controls selected after inspecting the original mismatches; not blind confirmatory evidence",
++        "inputs_sha256": before,
++        "frozen_targets_and_tolerances": protocol,
++        "rows": rows,
++        "diagnostic_controls_matched": matched,
++        "native_default_reference_passed": rows[0]["passed"],
++        "scope": "Healthy reference circuit only. Changed VMaxpu applies to isolated diagnostic contexts. Original simulation inputs and frozen comparator remain unchanged. Derived currents and internal balances are not independent field observations.",
++    }
++
++
++def compare_reports(saved, actual):
++    for key in (
++        "kind",
++        "schema_version",
++        "inputs_sha256",
++        "frozen_targets_and_tolerances",
++        "rows",
++        "diagnostic_controls_matched",
++        "native_default_reference_passed",
++    ):
++        if _differences(saved[key], actual[key], key, 1e-7):
++            raise ValueError("Saved sensitivity report differs from actual native execution")
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    target = parser.add_mutually_exclusive_group()
++    target.add_argument("--output", type=Path)
++    target.add_argument("--verify-report", type=Path)
++    args = parser.parse_args()
++    if args.output and args.output.exists():
++        parser.error("Output already exists; choose a new filename")
++    actual = run_study()
++    if args.verify_report:
++        old = json.loads(args.verify_report.read_text(encoding="utf-8"))
++        compare_reports(old, actual)
++    if args.output:
++        args.output.parent.mkdir(parents=True, exist_ok=True)
++        args.output.write_text(
++            json.dumps(actual, indent=2, allow_nan=False) + "\n", encoding="utf-8"
++        )
++    print(
++        json.dumps(
++            {
++                "diagnostic_controls_matched": actual["diagnostic_controls_matched"],
++                "rows": [
++                    {
++                        key: row[key]
++                        for key in (
++                            "configuration",
++                            "passed_checks",
++                            "total_checks",
++                            "failed_checks",
++                        )
++                    }
++                    for row in actual["rows"]
++                ],
++            },
++            indent=2,
++        )
++    )
++    return 0 if actual["diagnostic_controls_matched"] else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+--- a/scripts/release_support.py
++++ b/scripts/release_support.py
+@@ -80,6 +80,7 @@
+     for pattern in ("experiments/*.py", "experiments/protocols/*.json", "frontend/*"):
+         paths.update(p for p in root.glob(pattern) if p.is_file() and p.suffix != ".tsbuildinfo")
+     paths.update(root / p for p in ("pyproject.toml", "requirements-dev.lock"))
++    paths.update(root / p for p in (".gitignore", ".gitattributes") if (root / p).is_file())
+     return {
+         p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+         for p in sorted(paths)
+--- a/scripts/verify.py
++++ b/scripts/verify.py
+@@ -174,6 +174,15 @@
+             "experiments/run_model_reference.py",
+             "--output",
+             str(output / "model-reference.json"),
++        ],
++    )
++    step(
++        "reference-settings-sensitivity",
++        [
++            python,
++            "experiments/run_reference_sensitivity.py",
++            "--verify-report",
++            "experiments/reference_sensitivity_results/results.json",
+         ],
+     )
+     step("equipment-example", [python, "examples/equipment_availability.py"])

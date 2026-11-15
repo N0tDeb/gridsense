@@ -1,0 +1,3286 @@
+--- a/README.md
++++ b/README.md
+@@ -144,6 +144,9 @@
+ records Git source fixes and reference diagnostics.
+ The [evidence-input review](docs/EVIDENCE_INPUT_REVIEW_2026-10-14.md) adds
+ non-finite diagnostic rejection and records the latest verification.
++The [shared replay correction](docs/REPLAY_INTEGRITY_FIX_2026-10-14.md)
++rejects non-finite readings and altered Boolean types across replay paths,
++with fresh runs of affected studies under the corrected source fingerprints.
+ [GitHub readiness](docs/GITHUB_READINESS.md), [contribution guidance](CONTRIBUTING.md)
+ and [security reporting](SECURITY.md) cover repository preparation.
+ 
+--- a/backend/gridsense/service.py
++++ b/backend/gridsense/service.py
+@@ -1,6 +1,7 @@
+ """Incident orchestration: observations → planner → hidden-truth evaluation."""
+ 
+ import hashlib
++import math
+ from datetime import datetime, timedelta, timezone
+ from importlib.resources import files
+ from uuid import uuid4
+@@ -170,12 +171,20 @@
+             for i, (a, b) in enumerate(zip(left, right))
+             for p in _differences(a, b, f"{path}[{i}]", tolerance)
+         ]
+-    if (
+-        isinstance(left, (int, float))
+-        and not isinstance(left, bool)
+-        and isinstance(right, (int, float))
+-    ):
+-        return [] if abs(left - right) <= tolerance * max(1, abs(left), abs(right)) else [path]
++    if isinstance(left, bool) or isinstance(right, bool):
++        return [] if type(left) is bool and type(right) is bool and left == right else [path]
++    if isinstance(left, (int, float)) and isinstance(right, (int, float)):
++        # Reject non-finite data on either side, including equal infinities.
++        # Otherwise inf <= tolerance * inf can admit a corrupted measurement.
++        if any(isinstance(value, float) and not math.isfinite(value) for value in (left, right)):
++            return [path]
++        if left == right:
++            return []
++        try:
++            return [] if abs(left - right) <= tolerance * max(1, abs(left), abs(right)) else [path]
++        except OverflowError:
++            # A malformed huge integer must not crash comparison with native floats.
++            return [path]
+     return [] if left == right else [path]
+ 
+ 
+--- /dev/null
++++ b/backend/tests/test_replay_integrity.py
+@@ -0,0 +1,100 @@
++"""Malformed replay evidence cannot pass numeric or Boolean comparison."""
++
++import copy
++
++import pytest
++
++from gridsense.cases import RegressionInput
++from gridsense.domain import Scenario
++from gridsense.electrical import ElectricalEngine
++from gridsense.episodes import EpisodeConfig, canonical_hash
++from gridsense.regression import checksum, replay_regression, run_regression
++from gridsense.service import _differences, evaluate, replay
++from gridsense.session_store import CreateSession, SessionStore, replay_episode
++
++
++@pytest.mark.parametrize(
++    "left,right",
++    [
++        (float("inf"), 1.0),
++        (1.0, float("inf")),
++        (float("-inf"), 1.0),
++        (1.0, float("-inf")),
++        (float("nan"), 1.0),
++        (1.0, float("nan")),
++        (float("inf"), float("inf")),
++        (float("nan"), float("nan")),
++    ],
++)
++def test_comparison_rejects_nonfinite_values_on_either_side(left, right):
++    assert _differences({"reading": [left]}, {"reading": [right]}, "record") == [
++        "record.reading[0]"
++    ]
++
++
++@pytest.mark.parametrize("left,right", [(False, 0), (0, False), (True, 1), (1, True)])
++def test_comparison_preserves_boolean_type(left, right):
++    assert _differences({"feasible": left}, {"feasible": right}, "result") == ["result.feasible"]
++
++
++def test_comparison_retains_finite_tolerance_and_exact_large_integer_identity():
++    left = {"served_kw": 1000, "flags": [True, False], "count": 10**500}
++    right = {"served_kw": 1000.00001, "flags": [True, False], "count": 10**500}
++    assert not _differences(left, right)
++    right["served_kw"] = 1000.1
++    assert _differences(left, right) == [".served_kw"]
++    assert _differences(10**500, 1.0, "reading") == ["reading"]
++
++
++@pytest.fixture(scope="module")
++def incident():
++    return evaluate(Scenario(), "2026-01-01T12:00:00+00:00")
++
++
++@pytest.mark.parametrize("value", [float("inf"), float("-inf"), float("nan")])
++@pytest.mark.parametrize("location", ["before", "alternative"])
++def test_native_incident_replay_rejects_nonfinite_recorded_power(incident, value, location):
++    record = copy.deepcopy(incident)
++    if location == "before":
++        record["before"]["served_kw"] = value
++    else:
++        record["alternatives"][0]["result"]["served_kw"] = value
++    result = replay(record)
++    assert not result["matched"]
++    assert any(path.endswith("served_kw") for path in result["differences"])
++
++
++@pytest.mark.parametrize("location", ["before", "alternative"])
++def test_native_incident_replay_rejects_numeric_feasibility_flags(incident, location):
++    record = copy.deepcopy(incident)
++    target = record["before"] if location == "before" else record["alternatives"][0]["result"]
++    target["feasible"] = int(target["feasible"])
++    result = replay(record)
++    assert not result["matched"]
++    assert any(path.endswith("feasible") for path in result["differences"])
++
++
++def test_checksummed_regression_replay_rejects_numeric_boolean():
++    record = run_regression(RegressionInput())
++    assert replay_regression(record)["matched"]
++    record["candidate"]["result"]["feasible"] = int(record["candidate"]["result"]["feasible"])
++    record["content_sha256"] = checksum(record)
++    result = replay_regression(record)
++    assert not result["matched"]
++    assert "candidate.result.feasible" in result["differences"]
++
++
++def test_checksummed_episode_replay_rejects_numeric_boolean(tmp_path):
++    store = SessionStore(tmp_path / "session.sqlite3", engine=ElectricalEngine())
++    receipt = store.create(CreateSession(request_id="integrity", config=EpisodeConfig(horizon_s=2)))
++    record = store.export(receipt["id"])
++    assert replay_episode(record)["matched"]
++    record["frames"][0]["electrical"]["feasible"] = int(
++        record["frames"][0]["electrical"]["feasible"]
++    )
++    record["content_sha256"] = canonical_hash(
++        {key: value for key, value in record.items() if key != "content_sha256"}
++    )
++    result = replay_episode(record)
++    assert not result["matched"]
++    assert "frames[0].electrical.feasible" in result["differences"]
+--- a/docs/EVIDENCE_INPUT_REVIEW_2026-10-14.md
++++ b/docs/EVIDENCE_INPUT_REVIEW_2026-10-14.md
+@@ -55,7 +55,7 @@
+ and abrupt-restart recovery pass. Existing dependencies and compatible
+ Chromium are reused; source/build fingerprints are checked by release tooling.
+ [Latest verification](VERIFICATION.md),
+-[complete current report](verification/checks/verification.json).
++[complete report](verification/evidence-input-2026-10-14/checkpoint-checks/verification.json).
+ 
+ The ZIP includes the corrected runner, regenerated diagnostic data, the
+ new integrity/extraction records and retained earlier evidence. An
+--- a/docs/GITHUB_READINESS.md
++++ b/docs/GITHUB_READINESS.md
+@@ -6,6 +6,8 @@
+ [follow-up](FOLLOWUP_2026-10-14.md) for executed local checks and outstanding
+ validation. The [evidence-input review](EVIDENCE_INPUT_REVIEW_2026-10-14.md)
+ records subsequent diagnostic input validation and verification.
++The [shared replay correction](REPLAY_INTEGRITY_FIX_2026-10-14.md) records
++the current comparison fix and regenerated study evidence.
+ 
+ ## Included repository files
+ 
+--- /dev/null
++++ b/docs/REPLAY_INTEGRITY_FIX_2026-10-14.md
+@@ -0,0 +1,84 @@
++# Shared replay integrity correction
++
++Reviewed and corrected on 14 October 2026 by Codex (automated).
++Application version: 0.4.4; the corrected source has new replay fingerprints.
++
++## Reproduced defect and correction
++
++The shared comparison helper accepted positive or negative infinity as
++matching a finite reading, because both sides of its relative allowance
++could become infinite. It also treated Boolean flags as numeric 0/1.
++A malformed enormous integer could raise OverflowError during comparison.
++
++Actual native incident generation and replay in separate source processes
++reproduced these outcomes. The saved source accepted both infinities and a
++numeric feasibility flag, and crashed on the enormous integer. Corrected
++source returns an unmatched result for all four, with no exception.
++[Before/after reproduction](verification/replay-fix-2026-10-14/reproduction.json).
++
++The shared helper now rejects non-finite numbers on either side and requires
++Boolean flags to remain Boolean. Equal finite integers retain their identity;
++overflow during malformed numeric comparison reports a difference. Existing
++finite-value relative tolerances are retained. These checks apply to every
++replay/evidence path using the shared helper, including incident, regression,
++episode, temporal, failure-search and defect comparisons.
++
++Twenty-three new regressions cover both operand sides, nested readings,
++infinities/NaN, Boolean/numeric substitution, unchanged finite tolerance,
++large integers and actual native incident replay. Regression and episode
++exports with deliberately recomputed checksums still reject altered flag
++types. The diagnostic study now fingerprints the shared comparison source
++as an explicit dependency.
++
++## Evidence and source identity
++
++Changing service.py changes core, search, harness, assurance and episode
++fingerprints. Earlier records retain their original identities and are not
++relabelled as executions of the corrected source. The saved checkpoint
++`GridSense_Release_Prepared_v2.zip` has SHA-256
++`8dccbb8d170d7ee01155ee16625df31522a01c49f41a941fd86ffd28768898aa`.
++It preserves complete previous source, studies and protocols. Its full
++verification is also archived under
++[checkpoint checks](verification/evidence-input-2026-10-14/checkpoint-checks/verification.json).
++
++Original protocols are retained in
++`experiments/protocols/archive/replay-fix-2026-10-14/`. Quality, assurance
++and measurement-refresh protocols receive explicit revision/source pins;
++challenge and native-reuse freezes capture the corrected source and retain
++their predecessor hashes. All cases, seeds, budgets, variants, tolerances
++and analysis settings remain unchanged.
++[Protocol/source revision record](verification/replay-fix-2026-10-14/protocol-revision.json).
++
++Nine affected studies are executed anew: controller grid, paired search,
++transfer, fixed-seed quality evaluation, fault injection, restoration
++sessions, boundary challenge, measurement refresh and native reuse. Original
++study results remain in the preserved checkpoint; the current experiment
++directories contain new executions with matching source fingerprints.
++[Execution record](verification/replay-fix-2026-10-14/study-runs.json).
++Independent study processes overlap, so their wall times are not suitable
++for speed comparisons with previous runs.
++
++Bundled portable examples are generated again from the same saved requests
++and definitions, then strictly replayed. The reference sensitivity study is
++regenerated with its explicit comparison-helper dependency. Electrical model
++inputs and algorithms are unchanged; the original scientific reference
++remains 52/56 under native defaults.
++
++## Verification and delivery
++
++The complete Linux verification, including all study identity/accounting
++checks, browser workflows, real native runtime and restart recovery, is
++recorded in [current verification](VERIFICATION.md). The release packager
++requires complete successful software checks, matching input/build bytes,
++ZIP CRCs and per-file hashes. Earlier verification and review records retain
++their own dated scope.
++
++The [incremental source patch](reviews/replay-integrity-2026-10-14.patch)
++applies to the saved checkpoint. Updated study data and verification are
++supplied in the complete ZIP; rerun affected studies and verification after
++applying a source-only patch.
++
++Windows execution, GitHub-hosted CI, independent software/power-systems
++reviews and owner license selection remain pending. This correction does
++not add shared-network authentication, protection dynamics or field-grid
++validation.
+--- a/docs/VERIFICATION.md
++++ b/docs/VERIFICATION.md
+@@ -1,6 +1,52 @@
+ # Verification
+ 
+-## Latest evidence-input review: 14 October 2026
++## Latest shared replay correction: 14 October 2026
++
++Complete Linux verification covers the shared finite-number and Boolean-type
++comparison fix, current source fingerprints and freshly executed affected studies.
++
++| Suite | Passed | Failed | Skipped | Errors |
++| --- | ---: | ---: | ---: | ---: |
++| Backend | 317 | 0 | 0 | 0 |
++| Browser | 38 | 0 | 0 | 0 |
++
++The [current report](verification/checks/verification.json) contains 29 steps:
++28 passes and the original known 52/56 electrical-reference mismatch. There
++are zero flaky browser cases. Native/frontend HTTP, six strict workflow
++replays, desktop/phone geometry and topology checks, and abrupt restart
++with preserved commands/idempotent retries pass.
++[Runtime record](verification/checks/runtime/runtime.json),
++[restart record](verification/checks/restart/restart.json).
++
++Twenty-three new regressions cover non-finite operands, numeric Boolean
++flags, finite relative tolerance, huge integers and actual native replay.
++Checksummed regression/episode exports reject changed flag types even after
++checksums are recomputed. The actual
++[before/after reproduction](verification/replay-fix-2026-10-14/reproduction.json)
++records the saved source accepting infinities/numeric flags and failing
++with an oversized integer; fixed source reports differences in all four.
++
++The change to service.py creates new core/harness/search/assurance/episode
++fingerprints. Nine affected studies are actually rerun with original case,
++seed, budget, variant, tolerance and analysis settings. Original protocols
++and checkpoint source are preserved; revised source pins and freeze
++predecessors are explicit. Concurrent study execution makes wall times
++unsuitable for speed comparisons with older runs.
++[Study executions](verification/replay-fix-2026-10-14/study-runs.json),
++[protocol revisions](verification/replay-fix-2026-10-14/protocol-revision.json).
++
++Three portable examples are generated again from identical saved requests
++and strictly replayed. The diagnostic reference is regenerated and now
++fingerprints its shared comparison helper. Model files and physical solver/
++controller algorithms are unchanged; native defaults remain 52/56.
++[Full correction report](REPLAY_INTEGRITY_FIX_2026-10-14.md).
++
++Installed locked dependencies and compatible Chromium are reused. New
++runtime captures remain local. Windows/hosted CI execution, independent
++human reviews and owner license selection remain open. Older records below
++retain their own execution scope and identities.
++
++## Diagnostic-input checkpoint: 14 October 2026
+ 
+ Complete Linux verification passed after adding finite-number validation to
+ the reference sensitivity checker. The numerical simulation/replay modules,
+@@ -11,13 +57,13 @@
+ | Backend | 294 | 0 | 0 | 0 |
+ | Browser | 38 | 0 | 0 | 0 |
+ 
+-There are zero flaky browser cases. The current
+-[verification report](verification/checks/verification.json) contains 29 steps:
++There are zero flaky browser cases. The checkpoint
++[verification report](verification/evidence-input-2026-10-14/checkpoint-checks/verification.json) contains 29 steps:
+ 28 passed and one retains the original 52/56 electrical-reference mismatch.
+-[Runtime checks](verification/checks/runtime/runtime.json) record native
++[Runtime checks](verification/evidence-input-2026-10-14/checkpoint-checks/runtime/runtime.json) record native
+ health/frontend HTTP 200, six matched exports, clear topology labels and
+ no checked overflow, JavaScript errors or failed network requests.
+-[Restart checks](verification/checks/restart/restart.json) retain pending
++[Restart checks](verification/evidence-input-2026-10-14/checkpoint-checks/restart/restart.json) retain pending
+ commands and identical retries, then complete native restoration and replay.
+ 
+ Ten added tests raise the diagnostic suite to 14 cases. It rejects non-finite
+--- a/docs/reviews/STATUS.json
++++ b/docs/reviews/STATUS.json
+@@ -25,7 +25,7 @@
+     "status": "source_and_restart_verified",
+     "date": "2026-10-14",
+     "evidence": "../verification/checks/restart/restart.json",
+-    "scope": "Evidence-input follow-up: 294 backend and 38 browser cases; native backend and built frontend HTTP 200; six runtime exports strictly replay; pending-command restart and identical retry verified. Locked environment and compatible Chromium reused."
++    "scope": "Shared replay correction: 317 backend and 38 browser cases; native frontend/backend HTTP 200; six runtime exports strictly replay; pending-command restart and identical retry verified. Locked environment and compatible Chromium reused."
+   },
+   "fresh_dependency_install": {
+     "status": "locked_dependencies_installed_linux",
+@@ -60,8 +60,8 @@
+   "git_source_export": {
+     "status": "signed_inputs_byte_identity_checked",
+     "date": "2026-10-14",
+-    "evidence": "../verification/evidence-input-2026-10-14/git-source.json",
+-    "scope": "Staged source archive matches every signed input in the complete evidence-input verification; frontend/dist separately verified for the release ZIP."
++    "evidence": "../verification/replay-fix-2026-10-14/git-source.json",
++    "scope": "Staged source archive matches every signed input in successful shared-replay verification; built frontend separately verified for the release ZIP."
+   },
+   "automated_evidence_input_review": {
+     "status": "completed_with_fix_and_open_items",
+@@ -77,5 +77,14 @@
+     "date": "2026-10-14",
+     "evidence": "../verification/evidence-input-2026-10-14/extracted-followup-package.json",
+     "scope": "Saved follow-up ZIP before the finite-input fix: CRCs/all 420 manifest hashes, extracted Python imports, isolated native diagnostics and bundled strict regression replay. Spaces/Unicode source path; installed dependencies reused."
++  },
++  "automated_shared_replay_review": {
++    "status": "completed_with_fix_and_open_items",
++    "reviewer": "Codex (automated)",
++    "date": "2026-10-14",
++    "report": "../REPLAY_INTEGRITY_FIX_2026-10-14.md",
++    "backend_passed": 317,
++    "browser_passed": 38,
++    "scope": "Shared comparator rejects non-finite numbers and Boolean/numeric substitution; huge integer comparison cannot crash. Twenty-three new regressions, actual old/new native replay, nine affected study reruns with versioned source pins, unchanged case/seed/budget/tolerance/analysis settings and regenerated portable examples. Complete Linux verification rerun; native model inputs/physical algorithms unchanged."
+   }
+ }
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/assurance.json
+@@ -0,0 +1,549 @@
++{
++  "schema_version": 1,
++  "frozen_date": "2026-09-22",
++  "purpose": "Author-designed controller fault injection and reserved scenario-family evaluation; not a blind external holdout or field-risk estimate",
++  "harness_sha256": "aafbc4cb144cc14bcb5ed95a3cb0eb94cd69a762baa8068731e22feb3b01215f",
++  "design_rule": "Keep the input matrix, variant definitions, ordering, acceptance rules and budgets fixed. Do not tune production controllers or discard misses using these outcomes.",
++  "order": "Rows in the declared order, separately within development and reserved partitions; no claim of search superiority",
++  "reduction_budget_per_detected_variant": 24,
++  "reduction_partition": "reserved",
++  "reduction_rule": "First attributable detection per variant; greedily move demand toward the fixed priming case and shorten age/uncertainty, preserving primary failure category. Retain the service contract and priming state. Bounded simplification, not global minimality.",
++  "attribution": "Reference must pass the existing electrical AND service contract. Detect candidate rejection, new electrical failure, failed service contract or a service loss exceeding the existing 0.1 kW tolerance. Reference failures are inconclusive, never counted as defect detections.",
++  "variants": {
++    "nominal-control": "Unmodified nominal selection with a different ID; negative control",
++    "guarded-control": "Unmodified guarded selection with a different ID; negative control",
++    "skip-feasibility": "Nominal ranker omits the nominal electrical-feasibility filter",
++    "reverse-service": "Nominal ranker reverses critical and total service ranking signs",
++    "cached-action": "Nominal controller retains its first action across a changed observation",
++    "reverse-operations": "Nominal selector reverses a multi-operation plan; interface rejection is separate from an electrical detection",
++    "ignore-uncertainty": "Guarded controller accidentally applies nominal filtering and loading rank; ablation against the explicit guarded specification"
++  },
++  "columns": [
++    "id",
++    "partition",
++    "family",
++    "feeder",
++    "fault",
++    "load_a",
++    "load_b",
++    "load_c",
++    "reported_b",
++    "age_s",
++    "uncertainty_pct",
++    "minimum_restored_kw",
++    "minimum_critical_kw"
++  ],
++  "cases": [
++    [
++      "dev-fresh",
++      "development",
++      "known-demo",
++      "teaching",
++      "feed_a",
++      1,
++      0.7,
++      1.1,
++      0.7,
++      0,
++      0,
++      990,
++      395
++    ],
++    [
++      "dev-stale",
++      "development",
++      "known-demo",
++      "teaching",
++      "feed_a",
++      1,
++      1.15,
++      1,
++      0.85,
++      120,
++      40,
++      990,
++      395
++    ],
++    [
++      "dev-hold",
++      "development",
++      "known-demo",
++      "teaching",
++      "feed_a",
++      1,
++      1.5,
++      1.5,
++      1.5,
++      0,
++      0,
++      990,
++      395
++    ],
++    [
++      "dev-ieee",
++      "development",
++      "known-demo",
++      "ieee13",
++      "671692",
++      0.8,
++      0.8,
++      1,
++      0.8,
++      0,
++      0,
++      750,
++      380
++    ],
++    [
++      "r01",
++      "reserved",
++      "donor-role-reversal",
++      "teaching",
++      "feed_a",
++      1,
++      1.15,
++      0.65,
++      1.15,
++      0,
++      0,
++      990,
++      395
++    ],
++    [
++      "r02",
++      "reserved",
++      "donor-role-reversal",
++      "teaching",
++      "feed_a",
++      1,
++      1.25,
++      0.75,
++      1.25,
++      0,
++      0,
++      990,
++      395
++    ],
++    [
++      "r03",
++      "reserved",
++      "donor-role-reversal",
++      "teaching",
++      "feed_a",
++      0.8,
++      1.35,
++      0.8,
++      1.35,
++      0,
++      0,
++      792,
++      316
++    ],
++    [
++      "r04",
++      "reserved",
++      "donor-role-reversal",
++      "teaching",
++      "feed_a",
++      1.2,
++      1.05,
++      0.55,
++      1.05,
++      0,
++      0,
++      1188,
++      474
++    ],
++    [
++      "r05",
++      "reserved",
++      "stale-overestimate",
++      "teaching",
++      "feed_a",
++      1,
++      0.6,
++      1.15,
++      1.3,
++      300,
++      20,
++      990,
++      395
++    ],
++    [
++      "r06",
++      "reserved",
++      "stale-overestimate",
++      "teaching",
++      "feed_a",
++      1,
++      0.75,
++      1.05,
++      1.4,
++      900,
++      40,
++      990,
++      395
++    ],
++    [
++      "r07",
++      "reserved",
++      "stale-overestimate",
++      "teaching",
++      "feed_a",
++      0.8,
++      0.65,
++      1.2,
++      1.25,
++      60,
++      60,
++      792,
++      316
++    ],
++    [
++      "r08",
++      "reserved",
++      "stale-overestimate",
++      "teaching",
++      "feed_a",
++      1.2,
++      0.55,
++      1.1,
++      1.2,
++      1200,
++      20,
++      1188,
++      474
++    ],
++    [
++      "r09",
++      "reserved",
++      "uncertainty-boundary",
++      "teaching",
++      "feed_a",
++      1,
++      1.12,
++      0.9,
++      0.8,
++      1,
++      40,
++      990,
++      395
++    ],
++    [
++      "r10",
++      "reserved",
++      "uncertainty-boundary",
++      "teaching",
++      "feed_a",
++      1,
++      1.13,
++      0.9,
++      0.8,
++      1,
++      40,
++      990,
++      395
++    ],
++    [
++      "r11",
++      "reserved",
++      "uncertainty-boundary",
++      "teaching",
++      "feed_a",
++      1,
++      0.56,
++      1.15,
++      0.8,
++      3600,
++      30,
++      990,
++      395
++    ],
++    [
++      "r12",
++      "reserved",
++      "uncertainty-boundary",
++      "teaching",
++      "feed_a",
++      1,
++      0.55,
++      1.15,
++      0.8,
++      3600,
++      30,
++      990,
++      395
++    ],
++    [
++      "r13",
++      "reserved",
++      "partial-service-contract",
++      "teaching",
++      "feed_a",
++      1,
++      1.1,
++      1.1,
++      1.1,
++      0,
++      0,
++      395,
++      395
++    ],
++    [
++      "r14",
++      "reserved",
++      "partial-service-contract",
++      "teaching",
++      "feed_a",
++      1,
++      1.2,
++      1.2,
++      1.2,
++      0,
++      0,
++      395,
++      395
++    ],
++    [
++      "r15",
++      "reserved",
++      "partial-service-contract",
++      "teaching",
++      "feed_a",
++      1,
++      1.3,
++      1.3,
++      1.3,
++      0,
++      0,
++      395,
++      395
++    ],
++    [
++      "r16",
++      "reserved",
++      "partial-service-contract",
++      "teaching",
++      "feed_a",
++      0.8,
++      1.35,
++      1.35,
++      1.35,
++      0,
++      0,
++      316,
++      316
++    ],
++    [
++      "r17",
++      "reserved",
++      "preexisting-stress",
++      "teaching",
++      "feed_a",
++      1,
++      1.8,
++      1.8,
++      1.8,
++      0,
++      0,
++      990,
++      395
++    ],
++    [
++      "r18",
++      "reserved",
++      "preexisting-stress",
++      "teaching",
++      "feed_a",
++      1.5,
++      2,
++      2,
++      0.5,
++      600,
++      80,
++      1485,
++      592.5
++    ],
++    [
++      "r19",
++      "reserved",
++      "unattainable-downstream",
++      "teaching",
++      "seg_a",
++      1,
++      0.65,
++      0.65,
++      0.65,
++      0,
++      0,
++      990,
++      395
++    ],
++    [
++      "r20",
++      "reserved",
++      "unattainable-downstream",
++      "teaching",
++      "seg_a",
++      0.8,
++      1.25,
++      0.75,
++      0.75,
++      120,
++      40,
++      792,
++      316
++    ],
++    [
++      "r21",
++      "reserved",
++      "ieee-low-to-stressed",
++      "ieee13",
++      "671692",
++      0.55,
++      0.55,
++      1,
++      0.55,
++      0,
++      0,
++      510,
++      260
++    ],
++    [
++      "r22",
++      "reserved",
++      "ieee-low-to-stressed",
++      "ieee13",
++      "671692",
++      0.7,
++      0.7,
++      1,
++      0.7,
++      0,
++      0,
++      650,
++      335
++    ],
++    [
++      "r23",
++      "reserved",
++      "ieee-low-to-stressed",
++      "ieee13",
++      "671692",
++      0.9,
++      0.9,
++      1,
++      0.9,
++      0,
++      0,
++      840,
++      430
++    ],
++    [
++      "r24",
++      "reserved",
++      "ieee-low-to-stressed",
++      "ieee13",
++      "671692",
++      1.1,
++      1.1,
++      1,
++      1.1,
++      0,
++      0,
++      1020,
++      525
++    ],
++    [
++      "r25",
++      "reserved",
++      "ieee-stale-direction",
++      "ieee13",
++      "632670",
++      0.65,
++      0.65,
++      1,
++      1.1,
++      600,
++      40,
++      1200,
++      310
++    ],
++    [
++      "r26",
++      "reserved",
++      "ieee-stale-direction",
++      "ieee13",
++      "632670",
++      1.05,
++      1.05,
++      1,
++      0.65,
++      600,
++      40,
++      1950,
++      500
++    ],
++    [
++      "r27",
++      "reserved",
++      "ieee-stale-direction",
++      "ieee13",
++      "632670",
++      0.75,
++      0.75,
++      1,
++      0.6,
++      60,
++      25,
++      1390,
++      360
++    ],
++    [
++      "r28",
++      "reserved",
++      "ieee-stale-direction",
++      "ieee13",
++      "632670",
++      0.76,
++      0.76,
++      1,
++      0.6,
++      60,
++      25,
++      1410,
++      365
++    ]
++  ],
++  "temporal": {
++    "timeouts_s": [
++      3,
++      5
++    ],
++    "confirmation_delays_s": [
++      0,
++      2,
++      3,
++      4,
++      5,
++      12
++    ],
++    "failed_close": [
++      false,
++      true
++    ],
++    "variants": [
++      "confirmed-control",
++      "optimistic-command",
++      "timeout-success",
++      "inverted-position"
++    ],
++    "property": "At position feedback and timeout, a restored claim must have received closed-position confirmation and actual restored kW must reach the planned amount within 0.1 kW. Variants receive only command, position and timeout messages, not physical state.",
++    "scope": "One command per independent episode. Confirmation-before-timeout wins a timestamp tie. No multi-device coordination, feedback loss, stale-message IDs or protection dynamics. Do not compare unserved energy over unequal horizons."
++  },
++  "evaluation_scope": "Fixed, previously inspected cases on known synthetic models. Development and reserved labels describe case groups, not unseen holdout or field validation.",
++  "protocol_revision": 4,
++  "implementation_pinned_at": "2026-10-12T13:08:49.252234+00:00",
++  "implementation_pin_reason": "Execution-aware session planning and measured-overload restrictions; native circuit command values unchanged. All case inputs, seeds, budgets, tolerances, variants and analysis settings retained.",
++  "experiment_id": "gridsense-assurance-0.4.3"
++}
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/electrical.json
+@@ -0,0 +1,28 @@
++{
++  "schema_version": 1,
++  "frozen_date": "2026-09-22",
++  "source_url": "https://sites.ecse.rpi.edu/~vanfrl/documents/mscthesis/2018_Marcelo_Thesis.pdf",
++  "author": "Marcelo de Castro Fernandes",
++  "title": "Modeling and Simulation of Integrated Transmisson and Distribution Systems to Assess the Impacts of Distributed Energy Resources",
++  "year_on_cover": 2017,
++  "provenance_note": "Filename says 2018; cover and catalogue say 2017. Tables visually checked. Existing archived voltage-reference metadata remains byte-exact for replay compatibility.",
++  "tables": {"voltage": "Table 13, printed page 51, Official Results column", "transformer": "Table 18, printed page 72", "load_power": "Table 21, printed page 73"},
++  "interpretation": "Expected current is analytically derived from independently published P, Q and phase voltage, not a published current result. Constant-PQ wye loads only. No restoration ties in this reference circuit.",
++  "current_formula": "hypot(P_kW,Q_kvar)/(voltage_pu * base_LL_kV/sqrt(3))",
++  "current_relative_tolerance": 0.01,
++  "current_absolute_floor_a": 0.1,
++  "power_tolerance_kw_kvar": 0.05,
++  "loading_tolerance_percentage_points": 1.0,
++  "balance_tolerance_kw_kvar": 0.05,
++  "tolerance_reason": "Frozen before observing these outputs. A 1% current allowance covers rounded reference voltages and disclosed model differences; 0.05 kW/kvar for constant-power and internal balance checks is a numerical allowance, not an operational standard.",
++  "xfm1": {"kva": 500, "lv_ll_kv": 0.48},
++  "loads": [
++    {"name": "634a", "phase": 1, "kw": 160, "kvar": 110, "voltage_pu": 0.9940, "base_ll_kv": 0.48},
++    {"name": "634b", "phase": 2, "kw": 120, "kvar": 90, "voltage_pu": 1.0218, "base_ll_kv": 0.48},
++    {"name": "634c", "phase": 3, "kw": 120, "kvar": 90, "voltage_pu": 0.9960, "base_ll_kv": 0.48},
++    {"name": "645", "phase": 2, "kw": 170, "kvar": 125, "voltage_pu": 1.0329, "base_ll_kv": 4.16},
++    {"name": "675a", "phase": 1, "kw": 485, "kvar": 190, "voltage_pu": 0.9835, "base_ll_kv": 4.16},
++    {"name": "675b", "phase": 2, "kw": 68, "kvar": 60, "voltage_pu": 1.0553, "base_ll_kv": 4.16},
++    {"name": "675c", "phase": 3, "kw": 290, "kvar": 212, "voltage_pu": 0.9758, "base_ll_kv": 4.16}
++  ]
++}
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/measurement_refresh.json
+@@ -0,0 +1,507 @@
++{
++  "schema_version": 1,
++  "experiment_id": "gridsense-measurement-refresh-0.4.4",
++  "frozen_at": "2026-10-12T15:34:15.589540+00:00",
++  "episode_sha256": "df46688afe72556e32a34280085c8ee425eb2bbbb586bc2377ac4e8f6370836c",
++  "scope": "Three inspected synthetic cases with native electrical outcomes. The near-limit case is retained whether or not service improves. Not a blind holdout or an estimate of field frequency.",
++  "cases": [
++    {
++      "id": "fresh-donor-default",
++      "config": {
++        "title": "Fresh donor default",
++        "horizon_s": 19,
++        "initial_factors": {
++          "a": 0.8,
++          "b": 1.6,
++          "c": 1.0
++        },
++        "measurements": {
++          "period_s": 1,
++          "latency_s": 0,
++          "fresh_for_s": 2,
++          "initial_uncertainty_pct": 10.0,
++          "uncertainty_growth_pct_per_s": 2.0,
++          "maximum_uncertainty_pct": 80.0
++        },
++        "rules": {
++          "raise_samples": 2,
++          "clear_samples": 3,
++          "voltage_low_pu": 0.95,
++          "voltage_high_pu": 1.05,
++          "voltage_reset_margin_pu": 0.01,
++          "loading_limit_pct": 100.0,
++          "loading_reset_margin_pct": 2.0
++        },
++        "control": {
++          "policy": "guarded",
++          "max_operations": 3,
++          "evaluation_budget": 2048,
++          "confirmation_timeout_s": 5,
++          "max_attempts_per_position": 2,
++          "max_commands": 24,
++          "max_decisions": 32,
++          "replan_interval_s": 2,
++          "auto_return_normal": true,
++          "planning_timing": {
++            "actuation_delay_s": 1,
++            "confirmation_delay_s": 0,
++            "energy_horizon_s": 10
++          }
++        },
++        "events": [
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:b1",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:b1_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:b2",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:b2_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:c1",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:c1_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:c2",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:c2_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 10,
++            "kind": "outage",
++            "incident_id": "feeder-trip",
++            "equipment_kind": "line",
++            "equipment": "feed_a"
++          },
++          {
++            "at_s": 15,
++            "kind": "transport",
++            "equipment": "load:b1",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 15,
++            "kind": "transport",
++            "equipment": "bus:b1_lv",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 15,
++            "kind": "transport",
++            "equipment": "load:b2",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 15,
++            "kind": "transport",
++            "equipment": "bus:b2_lv",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 15,
++            "kind": "transport",
++            "equipment": "load:c1",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 15,
++            "kind": "transport",
++            "equipment": "bus:c1_lv",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 15,
++            "kind": "transport",
++            "equipment": "load:c2",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 15,
++            "kind": "transport",
++            "equipment": "bus:c2_lv",
++            "latency_s": 0,
++            "drop": false
++          }
++        ]
++      }
++    },
++    {
++      "id": "fresh-donor-zero-initial",
++      "config": {
++        "title": "Fresh donor zero initial",
++        "horizon_s": 14,
++        "initial_factors": {
++          "a": 0.8,
++          "b": 1.45,
++          "c": 1.25
++        },
++        "measurements": {
++          "period_s": 1,
++          "latency_s": 0,
++          "fresh_for_s": 2,
++          "initial_uncertainty_pct": 0.0,
++          "uncertainty_growth_pct_per_s": 2.0,
++          "maximum_uncertainty_pct": 80.0
++        },
++        "rules": {
++          "raise_samples": 2,
++          "clear_samples": 3,
++          "voltage_low_pu": 0.95,
++          "voltage_high_pu": 1.05,
++          "voltage_reset_margin_pu": 0.01,
++          "loading_limit_pct": 100.0,
++          "loading_reset_margin_pct": 2.0
++        },
++        "control": {
++          "policy": "guarded",
++          "max_operations": 3,
++          "evaluation_budget": 2048,
++          "confirmation_timeout_s": 5,
++          "max_attempts_per_position": 2,
++          "max_commands": 24,
++          "max_decisions": 32,
++          "replan_interval_s": 2,
++          "auto_return_normal": true,
++          "planning_timing": {
++            "actuation_delay_s": 1,
++            "confirmation_delay_s": 0,
++            "energy_horizon_s": 10
++          }
++        },
++        "events": [
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:b1",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:b1_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:b2",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:b2_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:c1",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:c1_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:c2",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:c2_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 5,
++            "kind": "outage",
++            "incident_id": "feeder-trip",
++            "equipment_kind": "line",
++            "equipment": "feed_a"
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "load:b1",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "bus:b1_lv",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "load:b2",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "bus:b2_lv",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "load:c1",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "bus:c1_lv",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "load:c2",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "bus:c2_lv",
++            "latency_s": 0,
++            "drop": false
++          }
++        ]
++      }
++    },
++    {
++      "id": "near-limit-aging",
++      "config": {
++        "title": "Near limit aging",
++        "horizon_s": 14,
++        "initial_factors": {
++          "a": 0.8,
++          "b": 1.45,
++          "c": 1.08
++        },
++        "measurements": {
++          "period_s": 1,
++          "latency_s": 0,
++          "fresh_for_s": 2,
++          "initial_uncertainty_pct": 10.0,
++          "uncertainty_growth_pct_per_s": 2.0,
++          "maximum_uncertainty_pct": 80.0
++        },
++        "rules": {
++          "raise_samples": 2,
++          "clear_samples": 3,
++          "voltage_low_pu": 0.95,
++          "voltage_high_pu": 1.05,
++          "voltage_reset_margin_pu": 0.01,
++          "loading_limit_pct": 100.0,
++          "loading_reset_margin_pct": 2.0
++        },
++        "control": {
++          "policy": "guarded",
++          "max_operations": 3,
++          "evaluation_budget": 2048,
++          "confirmation_timeout_s": 5,
++          "max_attempts_per_position": 2,
++          "max_commands": 24,
++          "max_decisions": 32,
++          "replan_interval_s": 2,
++          "auto_return_normal": true,
++          "planning_timing": {
++            "actuation_delay_s": 1,
++            "confirmation_delay_s": 0,
++            "energy_horizon_s": 10
++          }
++        },
++        "events": [
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:b1",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:b1_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:b2",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:b2_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:c1",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:c1_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "load:c2",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 1,
++            "kind": "transport",
++            "equipment": "bus:c2_lv",
++            "latency_s": 0,
++            "drop": true
++          },
++          {
++            "at_s": 5,
++            "kind": "outage",
++            "incident_id": "feeder-trip",
++            "equipment_kind": "line",
++            "equipment": "feed_a"
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "load:b1",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "bus:b1_lv",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "load:b2",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "bus:b2_lv",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "load:c1",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "bus:c1_lv",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "load:c2",
++            "latency_s": 0,
++            "drop": false
++          },
++          {
++            "at_s": 10,
++            "kind": "transport",
++            "equipment": "bus:c2_lv",
++            "latency_s": 0,
++            "drop": false
++          }
++        ]
++      }
++    }
++  ]
++}
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/model_reference.json
+@@ -0,0 +1,25 @@
++{
++  "schema_version": 1,
++  "configuration": "ieee13-native-model-envelope-v1",
++  "frozen_date": "2026-09-28",
++  "purpose": "Published-voltage comparisons, declared native load-law envelopes, and numerical consistency are separate evidence categories.",
++  "published_inputs_protocol_sha256": "7648402dcbfc3b61ff183d2448922ec437bc9c08c02e838ee4796b3334267774",
++  "native_model_sha256": "e78ad86910eb7e03de4cc09dbffdb508061a2030617e4e928ba16674e983adae",
++  "convergence_tolerance": 1e-8,
++  "published_voltage_tolerance_pu": 0.003,
++  "power_numeric_allowance_kw_kvar": 0.05,
++  "current_numeric_allowance_a": 0.1,
++  "balance_tolerance_kw_kvar": 0.05,
++  "tolerance_basis": "Propagate the existing 0.003 pu published-voltage allowance through the declared load law before comparison. Retain the original 0.05 kW/kvar numeric and balance allowances and 0.1 A current floor. Do not fit tolerances to the new output residuals.",
++  "load_model": {
++    "model": 1,
++    "phases": 1,
++    "connection": "wye",
++    "vminpu": 0.95,
++    "vmaxpu": 1.05,
++    "rated_phase_kv": {"634a": 0.277, "634b": 0.277, "634c": 0.277, "645": 2.4, "675a": 2.4, "675b": 2.4, "675c": 2.4}
++  },
++  "sensitivity": {"convergence_tolerances": [1e-4, 1e-6, 1e-8, 1e-10], "load_multipliers": [0.5, 1.0, 1.25]},
++  "scope": "No native load parameters or voltage limits are changed. The envelope is an analytical prediction conditioned on published voltage and declared native Model=1 behavior, not independent measured P/Q or current data. Numerical balance is internal consistency, not field validation. No restoration/protection validation is implied.",
++  "documentation": "https://dss-extensions.org/dss-format/Load.html"
++}
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/native_reuse.freeze.json
+@@ -0,0 +1,9 @@
++{
++  "frozen_at": "2026-10-12T15:30:16.741172+00:00",
++  "fingerprints": {
++    "episode_sha256": "df46688afe72556e32a34280085c8ee425eb2bbbb586bc2377ac4e8f6370836c",
++    "protocol_sha256": "0a8323971019694d205951ea945ec34f47ec73e8aa67af0fe05fb804835aeb12",
++    "runner_sha256": "c8b6d5fdf26a477130adccbc85c2bf20f0cf14c85096b4e271b72e7ca155194f",
++    "reference_sha256": "a052aa6a6bace3d73ecb7c9a27eb8dddd9a307bdf442b76a2cf15cc20ee86516"
++  }
++}
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/native_reuse.json
+@@ -0,0 +1,601 @@
++{
++  "schema_version": 1,
++  "experiment_id": "gridsense-native-reuse",
++  "frozen_at": "2026-10-12T15:20:04.972880+00:00",
++  "baseline_episode_sha256": "434203229037fc57b15049e9b0165fba47b4212a1abe90c063ac3a24d5fe3833",
++  "seed": 451007,
++  "scope": "Eight frozen synthetic planning inputs created before changing native reuse. Engineering comparison, not externally blinded or field-frequency evidence. Per-load means vary independently. Both implementations share the electrical adapter and objective.",
++  "budgets": [
++    192,
++    2048
++  ],
++  "cases": [
++    {
++      "id": "healthy",
++      "view": {
++        "at_s": 2,
++        "state": {
++          "load_factors": {
++            "a": 1.0,
++            "b": 1.0,
++            "c": 1.0
++          },
++          "closed_lines": [
++            "feed_a",
++            "feed_b",
++            "feed_c",
++            "seg_a",
++            "seg_b",
++            "seg_c"
++          ],
++          "locked_open": [],
++          "equipment_outages": [],
++          "open_transformers": [],
++          "source_connected": true
++        },
++        "demand_kw": {
++          "a1": 370.991,
++          "a2": 622.694,
++          "b1": 586.018,
++          "b2": 184.072,
++          "c1": 659.501,
++          "c2": 277.219
++        },
++        "bounds_kw": {
++          "a1": [
++            333.8919,
++            408.0901
++          ],
++          "a2": [
++            560.4245999999999,
++            684.9634
++          ],
++          "b1": [
++            527.4162,
++            644.6198
++          ],
++          "b2": [
++            165.6648,
++            202.47920000000002
++          ],
++          "c1": [
++            593.5509,
++            725.4511
++          ],
++          "c2": [
++            249.4971,
++            304.9409
++          ]
++        },
++        "evidence": {
++          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
++        },
++        "growth_pct_per_s": 0.0,
++        "maximum_uncertainty_pct": 100.0,
++        "remaining_horizon_s": 16,
++        "measured_overloads": [],
++        "unsafe_exposures": []
++      },
++      "max_operations": 2
++    },
++    {
++      "id": "trip-a",
++      "view": {
++        "at_s": 2,
++        "state": {
++          "load_factors": {
++            "a": 1.0,
++            "b": 1.0,
++            "c": 1.0
++          },
++          "closed_lines": [
++            "feed_b",
++            "feed_c",
++            "seg_a",
++            "seg_b",
++            "seg_c"
++          ],
++          "locked_open": [],
++          "equipment_outages": [
++            {
++              "incident_id": "frozen-trip",
++              "kind": "line",
++              "equipment": "feed_a"
++            }
++          ],
++          "open_transformers": [],
++          "source_connected": true
++        },
++        "demand_kw": {
++          "a1": 551.643,
++          "a2": 438.099,
++          "b1": 453.107,
++          "b2": 357.124,
++          "c1": 451.718,
++          "c2": 503.482
++        },
++        "bounds_kw": {
++          "a1": [
++            441.31440000000003,
++            661.9716
++          ],
++          "a2": [
++            350.4792,
++            525.7188
++          ],
++          "b1": [
++            362.48560000000003,
++            543.7284
++          ],
++          "b2": [
++            285.6992,
++            428.5488
++          ],
++          "c1": [
++            361.37440000000004,
++            542.0616
++          ],
++          "c2": [
++            402.78560000000004,
++            604.1784
++          ]
++        },
++        "evidence": {
++          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
++        },
++        "growth_pct_per_s": 2.0,
++        "maximum_uncertainty_pct": 100.0,
++        "remaining_horizon_s": 16,
++        "measured_overloads": [],
++        "unsafe_exposures": []
++      },
++      "max_operations": 3
++    },
++    {
++      "id": "trip-b",
++      "view": {
++        "at_s": 2,
++        "state": {
++          "load_factors": {
++            "a": 1.0,
++            "b": 1.0,
++            "c": 1.0
++          },
++          "closed_lines": [
++            "feed_a",
++            "feed_c",
++            "seg_a",
++            "seg_b",
++            "seg_c"
++          ],
++          "locked_open": [],
++          "equipment_outages": [
++            {
++              "incident_id": "frozen-trip",
++              "kind": "line",
++              "equipment": "feed_b"
++            }
++          ],
++          "open_transformers": [],
++          "source_connected": true
++        },
++        "demand_kw": {
++          "a1": 321.788,
++          "a2": 482.925,
++          "b1": 614.233,
++          "b2": 336.425,
++          "c1": 564.974,
++          "c2": 330.969
++        },
++        "bounds_kw": {
++          "a1": [
++            273.5198,
++            370.0562
++          ],
++          "a2": [
++            410.48625,
++            555.36375
++          ],
++          "b1": [
++            522.09805,
++            706.3679499999998
++          ],
++          "b2": [
++            285.96125,
++            386.88874999999996
++          ],
++          "c1": [
++            480.22790000000003,
++            649.7201
++          ],
++          "c2": [
++            281.32365,
++            380.61434999999994
++          ]
++        },
++        "evidence": {
++          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
++        },
++        "growth_pct_per_s": 0.0,
++        "maximum_uncertainty_pct": 100.0,
++        "remaining_horizon_s": 16,
++        "measured_overloads": [],
++        "unsafe_exposures": []
++      },
++      "max_operations": 3
++    },
++    {
++      "id": "trip-c",
++      "view": {
++        "at_s": 2,
++        "state": {
++          "load_factors": {
++            "a": 1.0,
++            "b": 1.0,
++            "c": 1.0
++          },
++          "closed_lines": [
++            "feed_a",
++            "feed_b",
++            "seg_a",
++            "seg_b",
++            "seg_c"
++          ],
++          "locked_open": [],
++          "equipment_outages": [
++            {
++              "incident_id": "frozen-trip",
++              "kind": "line",
++              "equipment": "feed_c"
++            }
++          ],
++          "open_transformers": [],
++          "source_connected": true
++        },
++        "demand_kw": {
++          "a1": 305.35,
++          "a2": 635.624,
++          "b1": 651.976,
++          "b2": 186.542,
++          "c1": 550.521,
++          "c2": 348.194
++        },
++        "bounds_kw": {
++          "a1": [
++            229.01250000000002,
++            381.6875
++          ],
++          "a2": [
++            476.718,
++            794.53
++          ],
++          "b1": [
++            488.98199999999997,
++            814.97
++          ],
++          "b2": [
++            139.9065,
++            233.1775
++          ],
++          "c1": [
++            412.89074999999997,
++            688.1512499999999
++          ],
++          "c2": [
++            261.1455,
++            435.2425
++          ]
++        },
++        "evidence": {
++          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
++        },
++        "growth_pct_per_s": 2.0,
++        "maximum_uncertainty_pct": 100.0,
++        "remaining_horizon_s": 16,
++        "measured_overloads": [],
++        "unsafe_exposures": []
++      },
++      "max_operations": 3
++    },
++    {
++      "id": "shed-b2",
++      "view": {
++        "at_s": 2,
++        "state": {
++          "load_factors": {
++            "a": 1.0,
++            "b": 1.0,
++            "c": 1.0
++          },
++          "closed_lines": [
++            "feed_a",
++            "feed_b",
++            "feed_c",
++            "seg_a",
++            "seg_b",
++            "seg_c"
++          ],
++          "locked_open": [],
++          "equipment_outages": [],
++          "open_transformers": [
++            "tx_b2"
++          ],
++          "source_connected": true
++        },
++        "demand_kw": {
++          "a1": 319.946,
++          "a2": 490.692,
++          "b1": 491.819,
++          "b2": 325.828,
++          "c1": 625.137,
++          "c2": 403.86
++        },
++        "bounds_kw": {
++          "a1": [
++            223.9622,
++            415.92980000000006
++          ],
++          "a2": [
++            343.4844,
++            637.8996000000001
++          ],
++          "b1": [
++            344.2733,
++            639.3647000000001
++          ],
++          "b2": [
++            228.07959999999997,
++            423.5764
++          ],
++          "c1": [
++            437.5958999999999,
++            812.6781
++          ],
++          "c2": [
++            282.702,
++            525.018
++          ]
++        },
++        "evidence": {
++          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
++        },
++        "growth_pct_per_s": 0.0,
++        "maximum_uncertainty_pct": 100.0,
++        "remaining_horizon_s": 16,
++        "measured_overloads": [],
++        "unsafe_exposures": []
++      },
++      "max_operations": 3
++    },
++    {
++      "id": "alternate-c",
++      "view": {
++        "at_s": 2,
++        "state": {
++          "load_factors": {
++            "a": 1.0,
++            "b": 1.0,
++            "c": 1.0
++          },
++          "closed_lines": [
++            "feed_b",
++            "feed_c",
++            "seg_a",
++            "seg_b",
++            "seg_c",
++            "tie_c"
++          ],
++          "locked_open": [],
++          "equipment_outages": [
++            {
++              "incident_id": "frozen-trip",
++              "kind": "line",
++              "equipment": "feed_a"
++            }
++          ],
++          "open_transformers": [
++            "tx_c2"
++          ],
++          "source_connected": true
++        },
++        "demand_kw": {
++          "a1": 549.73,
++          "a2": 558.294,
++          "b1": 403.406,
++          "b2": 186.728,
++          "c1": 521.226,
++          "c2": 272.398
++        },
++        "bounds_kw": {
++          "a1": [
++            439.78400000000005,
++            659.676
++          ],
++          "a2": [
++            446.6352,
++            669.9527999999999
++          ],
++          "b1": [
++            322.7248,
++            484.0872
++          ],
++          "b2": [
++            149.38240000000002,
++            224.0736
++          ],
++          "c1": [
++            416.98080000000004,
++            625.4712
++          ],
++          "c2": [
++            217.91840000000002,
++            326.87760000000003
++          ]
++        },
++        "evidence": {
++          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
++        },
++        "growth_pct_per_s": 2.0,
++        "maximum_uncertainty_pct": 100.0,
++        "remaining_horizon_s": 16,
++        "measured_overloads": [],
++        "unsafe_exposures": []
++      },
++      "max_operations": 3
++    },
++    {
++      "id": "source-open",
++      "view": {
++        "at_s": 2,
++        "state": {
++          "load_factors": {
++            "a": 1.0,
++            "b": 1.0,
++            "c": 1.0
++          },
++          "closed_lines": [
++            "feed_a",
++            "feed_b",
++            "feed_c",
++            "seg_a",
++            "seg_b",
++            "seg_c"
++          ],
++          "locked_open": [],
++          "equipment_outages": [
++            {
++              "incident_id": "frozen-source",
++              "kind": "source",
++              "equipment": "source"
++            }
++          ],
++          "open_transformers": [],
++          "source_connected": false
++        },
++        "demand_kw": {
++          "a1": 428.308,
++          "a2": 719.484,
++          "b1": 564.51,
++          "b2": 326.806,
++          "c1": 385.255,
++          "c2": 386.108
++        },
++        "bounds_kw": {
++          "a1": [
++            278.4002,
++            578.2158000000001
++          ],
++          "a2": [
++            467.66460000000006,
++            971.3034000000001
++          ],
++          "b1": [
++            366.9315,
++            762.0885000000001
++          ],
++          "b2": [
++            212.4239,
++            441.1881
++          ],
++          "c1": [
++            250.41575,
++            520.09425
++          ],
++          "c2": [
++            250.9702,
++            521.2458
++          ]
++        },
++        "evidence": {
++          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
++        },
++        "growth_pct_per_s": 0.0,
++        "maximum_uncertainty_pct": 100.0,
++        "remaining_horizon_s": 16,
++        "measured_overloads": [],
++        "unsafe_exposures": []
++      },
++      "max_operations": 2
++    },
++    {
++      "id": "trip-a-tight",
++      "view": {
++        "at_s": 2,
++        "state": {
++          "load_factors": {
++            "a": 1.0,
++            "b": 1.0,
++            "c": 1.0
++          },
++          "closed_lines": [
++            "feed_b",
++            "feed_c",
++            "seg_a",
++            "seg_b",
++            "seg_c"
++          ],
++          "locked_open": [],
++          "equipment_outages": [
++            {
++              "incident_id": "frozen-trip",
++              "kind": "line",
++              "equipment": "feed_a"
++            }
++          ],
++          "open_transformers": [],
++          "source_connected": true
++        },
++        "demand_kw": {
++          "a1": 465.708,
++          "a2": 536.29,
++          "b1": 527.891,
++          "b2": 299.103,
++          "c1": 375.007,
++          "c2": 393.486
++        },
++        "bounds_kw": {
++          "a1": [
++            442.4226,
++            488.99340000000007
++          ],
++          "a2": [
++            509.47549999999995,
++            563.1045
++          ],
++          "b1": [
++            501.4964499999999,
++            554.28555
++          ],
++          "b2": [
++            284.14785,
++            314.05815
++          ],
++          "c1": [
++            356.25665,
++            393.75735000000003
++          ],
++          "c2": [
++            373.8117,
++            413.1603
++          ]
++        },
++        "evidence": {
++          "scope": "Synthetic public planning inputs, independently varied per load; no physical demand or future event access."
++        },
++        "growth_pct_per_s": 2.0,
++        "maximum_uncertainty_pct": 100.0,
++        "remaining_horizon_s": 16,
++        "measured_overloads": [],
++        "unsafe_exposures": []
++      },
++      "max_operations": 3
++    }
++  ],
++  "comparison_tolerance": 1e-07,
++  "acceptance": [
++    "Disconnected requested demand remains in every returned requested_kw.",
++    "Reconnection, connected demand, topology and projected uncertainty remain checked.",
++    "Complete searches agree with the full-demand reference within numerical tolerance.",
++    "Retain all budget-exhausted, infeasible and differing choices; do not filter results."
++  ]
++}
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/quality.json
+@@ -0,0 +1,58 @@
++{
++  "schema_version": 1,
++  "purpose": "Fixed-seed search and controller evaluation with paired uncertainty intervals and measured adapter costs.",
++  "search_seeds": [
++    100,
++    101,
++    102,
++    103,
++    104,
++    105,
++    106,
++    107
++  ],
++  "search_budget_per_method": 16,
++  "reduction_seeds": [
++    100
++  ],
++  "reduction_budget": 24,
++  "controller_seeds": [
++    100,
++    101,
++    102,
++    103,
++    104,
++    105
++  ],
++  "controller_points_per_seed_group": 8,
++  "bootstrap_seed": 734,
++  "bootstrap_samples": 10000,
++  "controller_groups": [
++    [
++      "teaching",
++      "feed_a"
++    ],
++    [
++      "teaching",
++      "seg_a"
++    ],
++    [
++      "ieee13",
++      "632670"
++    ],
++    [
++      "ieee13",
++      "671692"
++    ]
++  ],
++  "core_sha256": "0b45e1c741b481d9ce3d11a732f0cc0401daf1f9f9c454b33854eccdf122dfb4",
++  "search_sha256": "36f393ae10d75b8d1d8566bb956bcc34e4a9dadce44474ade9e3c262e88da6d6",
++  "policy": "No controller, search, uncertainty-bound or service-threshold tuning using these results. Retain all seeds, no-hit runs and physically unattainable cases. These previously inspected cases use known small feeder models, not an external blind holdout.",
++  "metrics": "Paired capped first-failure trials (no hit = budget+1), hit rate, measured electrical-adapter solve calls, search runtime, separately budgeted reduction and strict replay. Controller results retain all-case and initially-feasible/truth-attainable denominators. Bootstrap resamples whole paired seeds, never individual correlated trials. Intervals describe this sampling protocol, not field risk.",
++  "harness_sha256": "aafbc4cb144cc14bcb5ed95a3cb0eb94cd69a762baa8068731e22feb3b01215f",
++  "frozen_at": "2026-09-21T17:52:42.553924+00:00",
++  "protocol_revision": 4,
++  "implementation_pinned_at": "2026-10-12T13:08:49.252234+00:00",
++  "implementation_pin_reason": "Execution-aware session planning and measured-overload restrictions; native circuit command values unchanged. All case inputs, seeds, budgets, tolerances, variants and analysis settings retained.",
++  "experiment_id": "gridsense-quality-0.4.3"
++}
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/session_challenge.freeze.json
+@@ -0,0 +1,10 @@
++{
++  "frozen_at": "2026-10-12T15:34:16.850182+00:00",
++  "scope": "Internal inspected synthetic challenge; no external registration or blind holdout",
++  "fingerprints": {
++    "episode_sha256": "df46688afe72556e32a34280085c8ee425eb2bbbb586bc2377ac4e8f6370836c",
++    "protocol_sha256": "82130e86b380e3e9726ea56c32373b1a819e2f27bdbe0530663b81636b020de6",
++    "runner_sha256": "569ff4d962c366f7e6bdfffd4df23ffd9fc8abd627642ad80b33bba266749772",
++    "outcome_helper_sha256": "5d3e8ab337f54b34e850f3c10c034f8ea95e8ecef5fc768dcf219646aec03864"
++  }
++}
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/session_challenge.json
+@@ -0,0 +1,656 @@
++{
++  "control": {
++    "max_operations": 3,
++    "evaluation_budget": 2048,
++    "confirmation_timeout_s": 3,
++    "max_attempts_per_position": 2,
++    "max_commands": 24,
++    "max_decisions": 32,
++    "replan_interval_s": 2,
++    "auto_return_normal": true,
++    "planning_timing": {
++      "actuation_delay_s": 1,
++      "confirmation_delay_s": 0,
++      "energy_horizon_s": 10
++    }
++  },
++  "measurements": {
++    "period_s": 1,
++    "latency_s": 0,
++    "fresh_for_s": 2,
++    "initial_uncertainty_pct": 10,
++    "uncertainty_growth_pct_per_s": 2,
++    "maximum_uncertainty_pct": 80
++  },
++  "policies": [
++    "off",
++    "nominal",
++    "guarded"
++  ],
++  "name": "Internal paired restoration boundary challenge",
++  "scope": "Inspected synthetic engineering cases, not an external or unseen holdout",
++  "horizon_s": 16,
++  "execution_order": "case order then off/nominal/guarded; sequential single-host timings are descriptive",
++  "cases": [
++    {
++      "id": "healthy-control",
++      "pair": "healthy",
++      "rationale": "Negative control: no disturbances or restoration needed",
++      "events": []
++    },
++    {
++      "id": "confirmation-deadline-2",
++      "pair": "confirmation-deadline",
++      "rationale": "Actuation takes one second; feedback arrives exactly at timeout 3 or one second later; duplicates retained",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 8,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_b",
++          "feedback_delay_s": 2,
++          "duplicates": 2
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_c",
++          "feedback_delay_s": 2,
++          "duplicates": 2
++        }
++      ]
++    },
++    {
++      "id": "confirmation-deadline-3",
++      "pair": "confirmation-deadline",
++      "rationale": "Actuation takes one second; feedback arrives exactly at timeout 3 or one second later; duplicates retained",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 8,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_b",
++          "feedback_delay_s": 3,
++          "duplicates": 2
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_c",
++          "feedback_delay_s": 3,
++          "duplicates": 2
++        }
++      ]
++    },
++    {
++      "id": "position-freshness-2",
++      "pair": "position-freshness",
++      "rationale": "Position rows at freshness limit 2 seconds versus one second beyond",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "transport",
++          "at_s": 1,
++          "equipment": "line:tie_b",
++          "latency_s": 2,
++          "drop": false
++        },
++        {
++          "kind": "transport",
++          "at_s": 1,
++          "equipment": "line:tie_c",
++          "latency_s": 2,
++          "drop": false
++        }
++      ]
++    },
++    {
++      "id": "position-freshness-3",
++      "pair": "position-freshness",
++      "rationale": "Position rows at freshness limit 2 seconds versus one second beyond",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "transport",
++          "at_s": 1,
++          "equipment": "line:tie_b",
++          "latency_s": 3,
++          "drop": false
++        },
++        {
++          "kind": "transport",
++          "at_s": 1,
++          "equipment": "line:tie_c",
++          "latency_s": 3,
++          "drop": false
++        }
++      ]
++    },
++    {
++      "id": "refault-order-5",
++      "pair": "refault-order",
++      "rationale": "Same-time repair/refault versus refault during the return sequence",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "outage",
++          "at_s": 5,
++          "incident_id": "again",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        }
++      ]
++    },
++    {
++      "id": "refault-order-6",
++      "pair": "refault-order",
++      "rationale": "Same-time repair/refault versus refault during the return sequence",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "outage",
++          "at_s": 6,
++          "incident_id": "again",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        }
++      ]
++    },
++    {
++      "id": "overlap-clearance-6",
++      "pair": "overlap-clearance",
++      "rationale": "Repairing the first incident must not clear the second; late repair has no remaining energy interval",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "outage",
++          "at_s": 2,
++          "incident_id": "other",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "repair",
++          "at_s": 6,
++          "incident_id": "other"
++        }
++      ]
++    },
++    {
++      "id": "overlap-clearance-16",
++      "pair": "overlap-clearance",
++      "rationale": "Repairing the first incident must not clear the second; late repair has no remaining energy interval",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "outage",
++          "at_s": 2,
++          "incident_id": "other",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "repair",
++          "at_s": 16,
++          "incident_id": "other"
++        }
++      ]
++    },
++    {
++      "id": "recovery-demand-1.3",
++      "pair": "recovery-demand",
++      "rationale": "Demand changes during recovery; fixed stress levels are not certified electrical thresholds",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "demand",
++          "at_s": 6,
++          "feeder": "a",
++          "factor": 1.3
++        }
++      ]
++    },
++    {
++      "id": "recovery-demand-1.5",
++      "pair": "recovery-demand",
++      "rationale": "Demand changes during recovery; fixed stress levels are not certified electrical thresholds",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "demand",
++          "at_s": 6,
++          "feeder": "a",
++          "factor": 1.5
++        }
++      ]
++    },
++    {
++      "id": "donor-demand-1.7",
++      "pair": "donor-demand",
++      "rationale": "Two prespecified donor-demand stress levels, preserving any initial violation",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 8,
++          "incident_id": "trip"
++        }
++      ],
++      "initial_factors": {
++        "a": 1,
++        "b": 1.7,
++        "c": 1.7
++      }
++    },
++    {
++      "id": "donor-demand-1.9",
++      "pair": "donor-demand",
++      "rationale": "Two prespecified donor-demand stress levels, preserving any initial violation",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 8,
++          "incident_id": "trip"
++        }
++      ],
++      "initial_factors": {
++        "a": 1,
++        "b": 1.9,
++        "c": 1.9
++      }
++    },
++    {
++      "id": "native-budget-14",
++      "pair": "native-budget",
++      "rationale": "Adjacent solve budgets around one 15-sample guarded assessment; nominal receives the same call cap",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ],
++      "control": {
++        "evaluation_budget": 14
++      }
++    },
++    {
++      "id": "native-budget-15",
++      "pair": "native-budget",
++      "rationale": "Adjacent solve budgets around one 15-sample guarded assessment; nominal receives the same call cap",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ],
++      "control": {
++        "evaluation_budget": 15
++      }
++    },
++    {
++      "id": "command-cap-1",
++      "pair": "command-cap",
++      "rationale": "Stopping after one versus two issued operations; unfinished recovery remains visible",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ],
++      "control": {
++        "max_commands": 1
++      }
++    },
++    {
++      "id": "command-cap-2",
++      "pair": "command-cap",
++      "rationale": "Stopping after one versus two issued operations; unfinished recovery remains visible",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ],
++      "control": {
++        "max_commands": 2
++      }
++    },
++    {
++      "id": "decision-cap-1",
++      "pair": "decision-cap",
++      "rationale": "One versus two planning decisions across disturbance and recovery",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ],
++      "control": {
++        "max_decisions": 1
++      }
++    },
++    {
++      "id": "decision-cap-2",
++      "pair": "decision-cap",
++      "rationale": "One versus two planning decisions across disturbance and recovery",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ],
++      "control": {
++        "max_decisions": 2
++      }
++    },
++    {
++      "id": "source-end-repair-15",
++      "pair": "source-end-repair",
++      "rationale": "Repair just before versus at the horizon; source/transformer availability is necessary for downstream service",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "source",
++          "equipment": "source"
++        },
++        {
++          "kind": "repair",
++          "at_s": 15,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "source-end-repair-16",
++      "pair": "source-end-repair",
++      "rationale": "Repair just before versus at the horizon; source/transformer availability is necessary for downstream service",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "source",
++          "equipment": "source"
++        },
++        {
++          "kind": "repair",
++          "at_s": 16,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "transformer-end-repair-15",
++      "pair": "transformer-end-repair",
++      "rationale": "Repair just before versus at the horizon; source/transformer availability is necessary for downstream service",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "transformer",
++          "equipment": "tx_a1"
++        },
++        {
++          "kind": "repair",
++          "at_s": 15,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "transformer-end-repair-16",
++      "pair": "transformer-end-repair",
++      "rationale": "Repair just before versus at the horizon; source/transformer availability is necessary for downstream service",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "transformer",
++          "equipment": "tx_a1"
++        },
++        {
++          "kind": "repair",
++          "at_s": 16,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "feedback-loss-false",
++      "pair": "feedback-loss",
++      "rationale": "Physical operation with or without delivered confirmation; status must not infer confirmation",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_b",
++          "drop_feedback": false
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_c",
++          "drop_feedback": false
++        }
++      ]
++    },
++    {
++      "id": "feedback-loss-true",
++      "pair": "feedback-loss",
++      "rationale": "Physical operation with or without delivered confirmation; status must not infer confirmation",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_b",
++          "drop_feedback": true
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_c",
++          "drop_feedback": true
++        }
++      ]
++    }
++  ]
++}
+--- /dev/null
++++ b/experiments/protocols/archive/replay-fix-2026-10-14/sessions.json
+@@ -0,0 +1,309 @@
++{
++  "name": "Fixed-horizon restoration and command lifecycle comparison",
++  "scope": "Inspected synthetic engineering cases on the balanced teaching feeder; no holdout or field-performance claim",
++  "horizon_s": 12,
++  "policies": [
++    "off",
++    "nominal",
++    "guarded"
++  ],
++  "control": {
++    "max_operations": 3,
++    "evaluation_budget": 2048,
++    "confirmation_timeout_s": 3,
++    "max_attempts_per_position": 2,
++    "max_commands": 24,
++    "max_decisions": 32,
++    "replan_interval_s": 2,
++    "auto_return_normal": true,
++    "planning_timing": {
++      "actuation_delay_s": 1,
++      "confirmation_delay_s": 0,
++      "energy_horizon_s": 10
++    }
++  },
++  "measurements": {
++    "period_s": 1,
++    "latency_s": 0,
++    "fresh_for_s": 2,
++    "initial_uncertainty_pct": 10,
++    "uncertainty_growth_pct_per_s": 2,
++    "maximum_uncertainty_pct": 80
++  },
++  "reference_cases": [
++    "feeder-repair",
++    "busy-donors",
++    "stale-east-demand",
++    "transformer-repair"
++  ],
++  "dense_cases": [
++    "feeder-repair",
++    "busy-donors",
++    "stale-east-demand"
++  ],
++  "dense_levels": [
++    0,
++    0.5,
++    1
++  ],
++  "cases": [
++    {
++      "id": "feeder-repair",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "transformer-repair",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "transformer",
++          "equipment": "tx_a1"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "source-repair",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "source",
++          "equipment": "source"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "busy-donors",
++      "initial_factors": {
++        "a": 1,
++        "b": 1.8,
++        "c": 1.8
++      },
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 8,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "stale-east-demand",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "demand",
++          "at_s": 1,
++          "feeder": "c",
++          "factor": 2
++        },
++        {
++          "kind": "transport",
++          "at_s": 1,
++          "equipment": "load:c1",
++          "latency_s": 0,
++          "drop": true
++        },
++        {
++          "kind": "transport",
++          "at_s": 1,
++          "equipment": "load:c2",
++          "latency_s": 0,
++          "drop": true
++        }
++      ]
++    },
++    {
++      "id": "failed-ties",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_b",
++          "fail": true
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_c",
++          "fail": true
++        },
++        {
++          "kind": "repair",
++          "at_s": 8,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "late-confirmation",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_c",
++          "feedback_delay_s": 5,
++          "duplicates": 2
++        },
++        {
++          "kind": "repair",
++          "at_s": 8,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "lost-confirmation",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "actuator",
++          "at_s": 1,
++          "equipment": "line:tie_c",
++          "drop_feedback": true
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        }
++      ]
++    },
++    {
++      "id": "refault-during-recovery",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "outage",
++          "at_s": 7,
++          "incident_id": "again",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        }
++      ]
++    },
++    {
++      "id": "unseen-demand-during-recovery",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "repair",
++          "at_s": 5,
++          "incident_id": "trip"
++        },
++        {
++          "kind": "demand",
++          "at_s": 6,
++          "feeder": "a",
++          "factor": 2
++        }
++      ]
++    },
++    {
++      "id": "no-source",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "source",
++          "equipment": "source"
++        }
++      ]
++    },
++    {
++      "id": "received-demand-changes-plan",
++      "events": [
++        {
++          "kind": "outage",
++          "at_s": 1,
++          "incident_id": "trip",
++          "equipment_kind": "line",
++          "equipment": "feed_a"
++        },
++        {
++          "kind": "demand",
++          "at_s": 2,
++          "feeder": "b",
++          "factor": 2
++        }
++      ]
++    }
++  ]
++}
+--- a/experiments/protocols/assurance.json
++++ b/experiments/protocols/assurance.json
+@@ -2,7 +2,7 @@
+   "schema_version": 1,
+   "frozen_date": "2026-09-22",
+   "purpose": "Author-designed controller fault injection and reserved scenario-family evaluation; not a blind external holdout or field-risk estimate",
+-  "harness_sha256": "aafbc4cb144cc14bcb5ed95a3cb0eb94cd69a762baa8068731e22feb3b01215f",
++  "harness_sha256": "d34e5731004bcbb04b54a814d405d74a71109a46a230c76c0aff6981b86c4839",
+   "design_rule": "Keep the input matrix, variant definitions, ordering, acceptance rules and budgets fixed. Do not tune production controllers or discard misses using these outcomes.",
+   "order": "Rows in the declared order, separately within development and reserved partitions; no claim of search superiority",
+   "reduction_budget_per_detected_variant": 24,
+@@ -542,8 +542,8 @@
+     "scope": "One command per independent episode. Confirmation-before-timeout wins a timestamp tie. No multi-device coordination, feedback loss, stale-message IDs or protection dynamics. Do not compare unserved energy over unequal horizons."
+   },
+   "evaluation_scope": "Fixed, previously inspected cases on known synthetic models. Development and reserved labels describe case groups, not unseen holdout or field validation.",
+-  "protocol_revision": 4,
+-  "implementation_pinned_at": "2026-10-12T13:08:49.252234+00:00",
+-  "implementation_pin_reason": "Execution-aware session planning and measured-overload restrictions; native circuit command values unchanged. All case inputs, seeds, budgets, tolerances, variants and analysis settings retained.",
+-  "experiment_id": "gridsense-assurance-0.4.3"
++  "protocol_revision": 5,
++  "implementation_pinned_at": "2026-10-14T17:24:25.659275+00:00",
++  "implementation_pin_reason": "Shared replay comparator rejects non-finite values and Boolean/numeric type mismatches. Electrical models, cases, seeds, budgets, variants, tolerances and analysis settings unchanged; actual rerun under new source.",
++  "experiment_id": "gridsense-assurance-0.4.3-replay-integrity-20261014"
+ }
+--- a/experiments/protocols/measurement_refresh.json
++++ b/experiments/protocols/measurement_refresh.json
+@@ -1,8 +1,8 @@
+ {
+   "schema_version": 1,
+-  "experiment_id": "gridsense-measurement-refresh-0.4.4",
++  "experiment_id": "gridsense-measurement-refresh-0.4.4-replay-integrity-20261014",
+   "frozen_at": "2026-10-12T15:34:15.589540+00:00",
+-  "episode_sha256": "df46688afe72556e32a34280085c8ee425eb2bbbb586bc2377ac4e8f6370836c",
++  "episode_sha256": "9851059ef8eeb730496cf99c2e1777d3a632e7d6baa0c80a8cfb31cd672394f6",
+   "scope": "Three inspected synthetic cases with native electrical outcomes. The near-limit case is retained whether or not service improves. Not a blind holdout or an estimate of field frequency.",
+   "cases": [
+     {
+@@ -503,5 +503,8 @@
+         ]
+       }
+     }
+-  ]
++  ],
++  "protocol_revision": 2,
++  "implementation_pinned_at": "2026-10-14T17:24:25.659275+00:00",
++  "implementation_pin_reason": "Shared replay comparator rejects non-finite values and Boolean/numeric type mismatches. Electrical models, cases, seeds, budgets, variants, tolerances and analysis settings unchanged; actual rerun under new source."
+ }
+--- a/experiments/protocols/native_reuse.freeze.json
++++ b/experiments/protocols/native_reuse.freeze.json
+@@ -1,7 +1,9 @@
+ {
+-  "frozen_at": "2026-10-12T15:30:16.741172+00:00",
++  "frozen_at": "2026-10-14T17:24:25.659275+00:00",
++  "scope": "Rerun after shared replay integrity correction; original cases, seeds, budgets and tolerances preserved",
++  "previous_freeze_sha256": "51237dfe5ea831c474db4c6821babdc5e0676188abf091740db662667e8b9f1c",
+   "fingerprints": {
+-    "episode_sha256": "df46688afe72556e32a34280085c8ee425eb2bbbb586bc2377ac4e8f6370836c",
++    "episode_sha256": "9851059ef8eeb730496cf99c2e1777d3a632e7d6baa0c80a8cfb31cd672394f6",
+     "protocol_sha256": "0a8323971019694d205951ea945ec34f47ec73e8aa67af0fe05fb804835aeb12",
+     "runner_sha256": "c8b6d5fdf26a477130adccbc85c2bf20f0cf14c85096b4e271b72e7ca155194f",
+     "reference_sha256": "a052aa6a6bace3d73ecb7c9a27eb8dddd9a307bdf442b76a2cf15cc20ee86516"
+--- a/experiments/protocols/quality.json
++++ b/experiments/protocols/quality.json
+@@ -45,14 +45,14 @@
+       "671692"
+     ]
+   ],
+-  "core_sha256": "0b45e1c741b481d9ce3d11a732f0cc0401daf1f9f9c454b33854eccdf122dfb4",
+-  "search_sha256": "36f393ae10d75b8d1d8566bb956bcc34e4a9dadce44474ade9e3c262e88da6d6",
++  "core_sha256": "89044955ffc19431f697a3c30bcb04c59b00efcb0457d50ef9130c6ffc4f4d72",
++  "search_sha256": "f3686299242ff174c6fcf5a9f4bbf8a486a04d10d23a07eea7942ceb3bcc2f69",
+   "policy": "No controller, search, uncertainty-bound or service-threshold tuning using these results. Retain all seeds, no-hit runs and physically unattainable cases. These previously inspected cases use known small feeder models, not an external blind holdout.",
+   "metrics": "Paired capped first-failure trials (no hit = budget+1), hit rate, measured electrical-adapter solve calls, search runtime, separately budgeted reduction and strict replay. Controller results retain all-case and initially-feasible/truth-attainable denominators. Bootstrap resamples whole paired seeds, never individual correlated trials. Intervals describe this sampling protocol, not field risk.",
+-  "harness_sha256": "aafbc4cb144cc14bcb5ed95a3cb0eb94cd69a762baa8068731e22feb3b01215f",
++  "harness_sha256": "d34e5731004bcbb04b54a814d405d74a71109a46a230c76c0aff6981b86c4839",
+   "frozen_at": "2026-09-21T17:52:42.553924+00:00",
+-  "protocol_revision": 4,
+-  "implementation_pinned_at": "2026-10-12T13:08:49.252234+00:00",
+-  "implementation_pin_reason": "Execution-aware session planning and measured-overload restrictions; native circuit command values unchanged. All case inputs, seeds, budgets, tolerances, variants and analysis settings retained.",
+-  "experiment_id": "gridsense-quality-0.4.3"
++  "protocol_revision": 5,
++  "implementation_pinned_at": "2026-10-14T17:24:25.659275+00:00",
++  "implementation_pin_reason": "Shared replay comparator rejects non-finite values and Boolean/numeric type mismatches. Electrical models, cases, seeds, budgets, variants, tolerances and analysis settings unchanged; actual rerun under new source.",
++  "experiment_id": "gridsense-quality-0.4.3-replay-integrity-20261014"
+ }
+--- a/experiments/protocols/session_challenge.freeze.json
++++ b/experiments/protocols/session_challenge.freeze.json
+@@ -1,8 +1,9 @@
+ {
+-  "frozen_at": "2026-10-12T15:34:16.850182+00:00",
+-  "scope": "Internal inspected synthetic challenge; no external registration or blind holdout",
++  "frozen_at": "2026-10-14T17:24:25.659275+00:00",
++  "scope": "Rerun after shared replay integrity correction; original cases, seeds, budgets and tolerances preserved",
++  "previous_freeze_sha256": "b2c62e41b0b96a3eba8c554407f6e0f12dd4b1ee3b002df70ea56fd2abcced07",
+   "fingerprints": {
+-    "episode_sha256": "df46688afe72556e32a34280085c8ee425eb2bbbb586bc2377ac4e8f6370836c",
++    "episode_sha256": "9851059ef8eeb730496cf99c2e1777d3a632e7d6baa0c80a8cfb31cd672394f6",
+     "protocol_sha256": "82130e86b380e3e9726ea56c32373b1a819e2f27bdbe0530663b81636b020de6",
+     "runner_sha256": "569ff4d962c366f7e6bdfffd4df23ffd9fc8abd627642ad80b33bba266749772",
+     "outcome_helper_sha256": "5d3e8ab337f54b34e850f3c10c034f8ea95e8ecef5fc768dcf219646aec03864"
+--- a/experiments/run_assurance_benchmark.py
++++ b/experiments/run_assurance_benchmark.py
+@@ -34,7 +34,7 @@
+ 
+ ROOT = Path(__file__).resolve().parent
+ PROTOCOL = ROOT / "protocols/assurance.json"
+-PROTOCOL_SHA256 = "4f87026eb3521d445e52e471a15fbc3a2d9cc2a403bf445a4991a0e3e7e1d28d"
++PROTOCOL_SHA256 = "471de53ffabc44635db58e4a6126110e3c500c0a10db2ce8757ddff930679a42"
+ 
+ 
+ def write_json(path, value):
+--- a/experiments/run_quality_benchmark.py
++++ b/experiments/run_quality_benchmark.py
+@@ -33,7 +33,7 @@
+ 
+ ROOT = Path(__file__).resolve().parent
+ PROTOCOL = ROOT / "protocols/quality.json"
+-PROTOCOL_SHA256 = "4b98009f7c36fbc7064fa9d55635245c4217dcb2afbdb4e8eadec83a99c97e93"
++PROTOCOL_SHA256 = "5ca697da36b757cbdfd8dc1e0353ffa1e3157ce1ce92bdff84c7022527de8e59"
+ 
+ 
+ def write_json(path, value):
+--- a/experiments/run_reference_sensitivity.py
++++ b/experiments/run_reference_sensitivity.py
+@@ -33,6 +33,7 @@
+         "experiments/protocols/electrical.json",
+         "backend/gridsense/ieee13.py",
+         "backend/gridsense/reference_checks.py",
++        "backend/gridsense/service.py",
+         "backend/gridsense/circuits/ieee13/model.dss",
+         "backend/gridsense/circuits/ieee13/reference.json",
+     )

@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "software_review": {"status": "pending", "reviewer": null, "date": null, "report": null},
+  "power_systems_review": {"status": "pending", "reviewer": null, "date": null, "report": null},
+  "windows_execution": {"status": "not_verified", "evidence": null},
+  "hosted_ci": {"status": "configured_not_run", "run_url": null},
+  "attribution_rule": "External review completion requires a dated report; public attribution requires permission."
+}
