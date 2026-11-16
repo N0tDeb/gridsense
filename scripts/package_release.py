@@ -272,9 +272,8 @@ def main():
         },
         "fresh_extraction": fresh,
         "unverified": [
-            "Windows execution",
-            "GitHub-hosted CI",
-            "independent human software and power-systems reviews",
+            "Field-device or protection-system safety",
+            "Platforms and browser engines beyond the supplied execution logs",
         ],
         "scope": "Actual local software/native verification and retained study consistency. No claim of field validation or a rerun of every stored campaign.",
     }
@@ -305,7 +304,11 @@ def main():
         "verification": "docs/VERIFICATION.md",
         "assurance": "docs/ASSURANCE.md",
         "walkthrough": "docs/WALKTHROUGH.md",
-        "status": "Linux software/runtime verified; corrected Official-column reference 29/29; constant-PQ v1 56/56; native-default legacy 52/56 retained; Windows/hosted CI/human review pending",
+        "status": (
+            "Local software/runtime verification passed for the recorded platform; "
+            "reference results and native-version boundaries are reported below. "
+            "No field validation or untested-platform certification is implied."
+        ),
         "tests": {"backend": backend, "browser": browsers},
         "core_sha256": implementation_hash(),
         "search_sha256": search_hash(),
@@ -363,7 +366,7 @@ def main():
             },
             "scope": model_reference["scope"],
         },
-        "reviews": json.loads((ROOT / "docs/reviews/STATUS.json").read_text(encoding="utf-8")),
+        "verification_scope": verification.get("verification_scope", "full-local-verification"),
         "exclusions": [
             "built frontend (recreated by documented build)",
             "raw verification logs and browser captures",

@@ -70,9 +70,11 @@ built frontend, runtime databases, caches, browser captures and verification log
 The source build is documented in SETUP.md. LICENSE, NOTICE, circuit data and
 third-party notices are retained.
 
-`RELEASE_MANIFEST.json` contains the file inventory and release checks.
-`docs/verification/summary.json` is the compact current verification record.
-Run logs are reproducible in ignored `var/`; no older ZIP is required.
+The release command generates `RELEASE_MANIFEST.json` and
+`docs/verification/summary.json` for the source and verification logs supplied
+at packaging time. Do not treat a previously generated report as evidence for a
+newer commit. Raw run logs remain in ignored `var/`; hosted execution results
+are retained as GitHub Actions artifacts.
 
 Extract the result separately, create a fresh environment, follow SETUP.md and
 check startup/native workflows. A source/hash equality check complements, but

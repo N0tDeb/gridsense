@@ -5,9 +5,9 @@ including bad inputs, interruption and recovery. Coverage is based on real
 native OpenDSS execution, API/backend checks, Chromium journeys and strict replay.
 It is a coverage map, not a guarantee for every possible input or platform.
 
-The latest completed counts and execution time are in
-[VERIFICATION.md](VERIFICATION.md) and the
-[machine-readable report](verification/summary.json).
+The verification procedure and platform scopes are in
+[VERIFICATION.md](VERIFICATION.md). The latest executed counts and logs are
+available in the [GitHub Actions run artifacts](https://github.com/N0tDeb/gridsense/actions/workflows/checks.yml).
 
 | Area | Journeys checked | Main evidence |
 | --- | --- | --- |
@@ -36,16 +36,15 @@ The six runtime kinds are regression, temporal, failure search, live session,
 controlled session and live dashboard. Their exports are checked with the
 current implementation rather than only compared with cached UI text.
 
-## Scope still to verify
+## Scope boundaries
 
-- Windows execution and GitHub-hosted CI. The matrix workflow exists; run reports
-  are still needed before claiming those platforms pass.
-- Additional operating-system and browser installations beyond the environment
-  actually recorded in the current fresh-extraction summary.
-- Independent software and power-systems reports using the
-  [review packet](INDEPENDENT_REVIEW.md).
-- Browser engines and device combinations beyond the tested Chromium desktop
-  and phone viewport. No universal accessibility certification is claimed.
+- CI currently checks Linux full native/software verification and Windows
+  operational compatibility separately; a different OpenDSS build can correctly
+  reject Linux-frozen historical records on Windows.
+- Platforms, browser engines and device combinations beyond the executed CI
+  environments remain untested unless separate evidence is recorded.
+- Chromium desktop and phone-viewport checks do not establish accessibility
+  certification, physical feeder validation or safety for field operation.
 
 The original native-default electrical comparison remains 52/56. The declared
 constant-PQ v1 reference passes 56/56; the corrected public voltage reference

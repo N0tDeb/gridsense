@@ -135,5 +135,5 @@ python experiments/run_model_reference.py --output var/model-aware.json
 
 Included results and protocols live under `experiments/`. `python scripts/verify.py`
 runs the named checks and verifies saved configured/control evidence against actual
-native execution. An [independent power-systems review](INDEPENDENT_REVIEW.md)
-is still needed before expanding the model's claims.
+native execution. These experiments are bounded model checks, not independent
+field validation; additional evidence is required before expanding claims.

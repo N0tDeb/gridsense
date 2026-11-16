@@ -1,9 +1,12 @@
 # Verification and acceptance
 
-The current machine-readable [summary](verification/summary.json) reports the
-actual source/build fingerprints, backend/browser counts, native runtime/replay,
-reference comparisons, fresh-extraction checks and environment. It is generated
-from execution, not inferred from the existence of tests or workflows.
+Each full verification run produces `verification.json` and supporting logs in
+its chosen output directory. The source ZIP release command also generates a
+`docs/verification/summary.json` report and `RELEASE_MANIFEST.json` for that
+specific verified source snapshot; these are generated outputs, not evergreen
+proof about later commits. Examine the
+[latest GitHub Actions runs](https://github.com/N0tDeb/gridsense/actions/workflows/checks.yml)
+for current hosted execution results.
 
 ## Run the checks
 
@@ -54,16 +57,16 @@ The summary distinguishes actual execution from checking retained evidence.
 
 ## Limits on completion claims
 
-The local verification record does not certify every input, device or browser.
-The November 15, 2026 GitHub Actions run passed on Linux and failed full
-verification on Windows. Its Windows artifact records native-version-specific
-historical replay/reference mismatches and a runtime cleanup timeout. The CI
-Windows compatibility mode runs native/backend/browser checks but reports
-Linux-frozen native evidence as platform-bound; a passing compatibility job is
-not full scientific/release verification across both operating systems. Native
-steady-state tests do not establish field safety, protection or transient behavior.
-Independent [software and electrical reviews](INDEPENDENT_REVIEW.md) remain pending
-unless dated reports are supplied. [Limitations](LIMITATIONS.md), [security](../SECURITY.md).
+A passing job verifies only the checks executed on its platform. The Linux CI
+job runs full local verification, including frozen native replay. The Windows
+CI job runs operational compatibility checks and explicitly reports historical
+Linux-native records that cannot be strictly replayed under a different OpenDSS
+build; this is not equivalent to cross-platform scientific validation. Consult
+[GitHub Actions](https://github.com/N0tDeb/gridsense/actions/workflows/checks.yml)
+for current results and retained run artifacts. Native steady-state checks do not
+establish field safety, protection behavior or transient performance. No claim of
+independent field certification is made. See [limitations](LIMITATIONS.md) and
+[security](../SECURITY.md).
 
 The repository is complete source with explicitly documented dependencies. No
 previous ZIP, development directory, conversation or runtime database is required.

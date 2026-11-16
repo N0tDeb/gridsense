@@ -202,10 +202,12 @@ python experiments/run_reference_checks.py --output var/reference-check.json
 The last command intentionally returns 1 for the known scientific mismatches;
 1 is not an installation failure. A software verification success means this
 outcome was reproduced and explicitly reported, not that those checks passed.
-All three reference/campaign runners refuse to replace existing evidence outputs. Windows instructions and CI use the same verification script;
-actual Windows/hosted CI and independent human reviews remain pending.
+All three reference/campaign runners refuse to replace existing evidence outputs.
+Windows CI uses the same verification script with `--windows-compat`, which
+checks real functionality but reports Linux-native frozen replay mismatches as
+platform-specific rather than passing historical replays. See
+[verification](VERIFICATION.md) for execution scope and current CI reports.
 
 Follow the [walkthrough](WALKTHROUGH.md) for a complete example and
 [engineering case studies](ENGINEERING_CONTRACTS.md) for application bugs and
-the model-assumption finding. The [review guide](INDEPENDENT_REVIEW.md) lists
-independent checks still to be performed.
+the model-assumption finding.

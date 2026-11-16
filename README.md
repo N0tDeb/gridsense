@@ -1,5 +1,7 @@
 # GridSense
 
+[![GridSense CI](https://github.com/N0tDeb/gridsense/actions/workflows/checks.yml/badge.svg)](https://github.com/N0tDeb/gridsense/actions/workflows/checks.yml)
+
 GridSense simulates how a distribution feeder loses and regains electricity
 supply. Start with a healthy network, introduce an outage or a demand change,
 and follow the measurements, alarms and switching decisions through restoration
@@ -12,8 +14,8 @@ visible and records the evidence behind each decision.
 The application runs locally on a CPU machine, using Python, OpenDSSDirect,
 FastAPI, SQLite, React and TypeScript.
 
-[Feature and flow verification](docs/FLOW_VERIFICATION.md) maps the complete
-journeys to executed checks and identifies the remaining review scope.
+[Feature and flow verification](docs/FLOW_VERIFICATION.md) maps the tested
+journeys, current CI coverage and remaining technical boundaries.
 
 ![GridSense live restoration dashboard](docs/dashboard.png)
 
@@ -55,8 +57,10 @@ gridsense serve
 ```
 
 Open **http://127.0.0.1:8000**. [SETUP.md](SETUP.md) includes Windows PowerShell
-commands, browser setup, CLI workflows and troubleshooting. Linux hosted CI passed on November 15, 2026; full Windows verification
-failed and remains a documented compatibility workstream.
+commands, browser setup, CLI workflows and troubleshooting. The
+[GitHub Actions checks](https://github.com/N0tDeb/gridsense/actions/workflows/checks.yml)
+run Linux full verification and Windows operational compatibility checks; see
+[verification scope](docs/VERIFICATION.md) for what each result establishes.
 
 ## Follow an outage through restoration
 

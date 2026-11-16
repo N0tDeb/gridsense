@@ -34,6 +34,11 @@ jobs:
       - name: Windows operational compatibility (native evidence remains platform-bound)
         if: runner.os == 'Windows'
         run: python scripts/verify.py --windows-compat --output-dir var/ci-verification
+      - name: Linux source release packaging smoke
+        if: runner.os == 'Linux'
+        run: |
+          python scripts/package_release.py --verification-dir var/ci-verification --output var/ci-package/GridSense.zip
+          python -c "import zipfile; z = zipfile.ZipFile('var/ci-package/GridSense.zip'); assert z.testzip() is None; assert 'gridsense/RELEASE_MANIFEST.json' in z.namelist()"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
