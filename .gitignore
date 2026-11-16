@@ -35,3 +35,7 @@ dist/
 .coverage
 htmlcov/
 *.log
+
+# Generated release metadata; recreate for each verified source snapshot.
+/RELEASE_MANIFEST.json
+/docs/verification/summary.json

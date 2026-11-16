@@ -45,9 +45,9 @@ Set-Location ..
 .\.venv\Scripts\python.exe -m gridsense.cli serve
 ```
 
-These are supported setup instructions, with execution status recorded in
-[verification](docs/VERIFICATION.md). Do not infer Windows verification from the
-presence of its CI configuration.
+These are supported setup instructions. The
+[verification guide](docs/VERIFICATION.md) distinguishes Windows operational
+compatibility from Linux-native historical replay and scientific validation.
 
 ## Database and configuration
 

@@ -136,11 +136,13 @@ The service is for loopback, single-user use, with no authentication, multiuser
 authorization or field-device integration. Snapshot experiment jobs do not
 resume after interruption. Live sessions retain committed ticks and restart
 paused; an in-flight transaction either commits completely or rolls back.
-Only one local server process should own session pacing. Linux checks
-are recorded in [VERIFICATION.md](VERIFICATION.md). The November 15, 2026 hosted Linux CI passed, but full Windows CI failed;
-Windows compatibility is tracked separately from native-frozen scientific evidence.
-Independent human software and power-systems reviews remain pending in
-[review status](reviews/STATUS.json).
+Only one local server process should own session pacing. CI checks Linux full
+verification and Windows operational compatibility with different native-replay
+scopes; see [verification](VERIFICATION.md) and the
+[hosted job results](https://github.com/N0tDeb/gridsense/actions/workflows/checks.yml).
+The model is for research and teaching, not a certified field-control or
+protection system; technical assumptions and untested physical behaviors remain
+explicit in this document.
 The pinned native wrapper retains newly created contexts. API workers are
 recycled after each bounded request; the large search campaigns use fresh
 sequential workers per seed-group. A custom long-running Python loop that keeps
