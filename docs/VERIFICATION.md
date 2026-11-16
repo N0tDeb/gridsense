@@ -55,7 +55,12 @@ The summary distinguishes actual execution from checking retained evidence.
 ## Limits on completion claims
 
 The local verification record does not certify every input, device or browser.
-Windows execution and GitHub-hosted CI need their own observed reports. Native
+The November 15, 2026 GitHub Actions run passed on Linux and failed full
+verification on Windows. Its Windows artifact records native-version-specific
+historical replay/reference mismatches and a runtime cleanup timeout. The CI
+Windows compatibility mode runs native/backend/browser checks but reports
+Linux-frozen native evidence as platform-bound; a passing compatibility job is
+not full scientific/release verification across both operating systems. Native
 steady-state tests do not establish field safety, protection or transient behavior.
 Independent [software and electrical reviews](INDEPENDENT_REVIEW.md) remain pending
 unless dated reports are supplied. [Limitations](LIMITATIONS.md), [security](../SECURITY.md).

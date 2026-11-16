@@ -28,7 +28,12 @@ jobs:
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: python scripts/verify.py --output-dir var/ci-verification
+      - name: Linux full verification
+        if: runner.os == 'Linux'
+        run: python scripts/verify.py --output-dir var/ci-verification
+      - name: Windows operational compatibility (native evidence remains platform-bound)
+        if: runner.os == 'Windows'
+        run: python scripts/verify.py --windows-compat --output-dir var/ci-verification
       - uses: actions/upload-artifact@v4
         if: always()
         with:

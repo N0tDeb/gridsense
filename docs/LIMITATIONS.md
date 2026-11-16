@@ -137,8 +137,10 @@ authorization or field-device integration. Snapshot experiment jobs do not
 resume after interruption. Live sessions retain committed ticks and restart
 paused; an in-flight transaction either commits completely or rolls back.
 Only one local server process should own session pacing. Linux checks
-are recorded in [VERIFICATION.md](VERIFICATION.md). Windows automation, hosted CI,
-and external reviews remain pending in [review status](reviews/STATUS.json).
+are recorded in [VERIFICATION.md](VERIFICATION.md). The November 15, 2026 hosted Linux CI passed, but full Windows CI failed;
+Windows compatibility is tracked separately from native-frozen scientific evidence.
+Independent human software and power-systems reviews remain pending in
+[review status](reviews/STATUS.json).
 The pinned native wrapper retains newly created contexts. API workers are
 recycled after each bounded request; the large search campaigns use fresh
 sequential workers per seed-group. A custom long-running Python loop that keeps

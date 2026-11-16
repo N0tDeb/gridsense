@@ -1,6 +1,6 @@
 /** Exercise the built dashboard and native backend using a disposable database. */
 import { chromium as playwright } from '../frontend/node_modules/playwright/index.mjs';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, execFileSync, execFile } from 'node:child_process';
 import { mkdir, writeFile, readdir } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -34,7 +34,7 @@ const inputHashes = JSON.parse(
 const server = spawn(python, [root + '/scripts/test_server.py', '--port', String(port)], {
   cwd: root,
   env: environment,
-  stdio: ['ignore', 'pipe', 'pipe'],
+  stdio: ['ignore', 'ignore', 'pipe'],
 });
 let serverOutput = '',
   browser;
@@ -337,10 +337,68 @@ try {
   )
     throw new Error('Runtime check failed');
 } finally {
-  if (browser) await browser.close();
-  if (server.exitCode === null) {
-    const stopped = new Promise((resolve) => server.once('close', resolve));
-    server.kill('SIGTERM');
-    await stopped;
+  // The disposable test server owns spawned native workers. On Windows these
+  // can keep an inherited pipe alive after the Python parent has exited.
+  let cleanupError;
+  if (browser) {
+    console.log('Runtime cleanup: closing Chromium');
+    let browserTimer;
+    try {
+      await Promise.race([
+        browser.close(),
+        new Promise((_, reject) => {
+          browserTimer = setTimeout(
+            () => reject(new Error('Chromium shutdown exceeded 20 seconds')),
+            20000,
+          );
+        }),
+      ]);
+      console.log('Runtime cleanup: Chromium closed');
+    } catch (error) {
+      cleanupError = error;
+      console.error('Runtime cleanup: Chromium close failed', error);
+    } finally {
+      clearTimeout(browserTimer);
+    }
   }
+  if (server.exitCode === null && server.signalCode === null) {
+    console.log('Runtime cleanup: stopping Python process tree');
+    const stopped = new Promise((resolve) => server.once('exit', resolve));
+    let shutdownTimer;
+    try {
+      if (process.platform === 'win32') {
+        await new Promise((resolve, reject) => {
+          execFile(
+            'taskkill',
+            ['/PID', String(server.pid), '/T', '/F'],
+            { windowsHide: true, timeout: 15000 },
+            (error) => {
+              if (error && server.exitCode === null && server.signalCode === null) reject(error);
+              else resolve();
+            },
+          );
+        });
+      } else {
+        server.kill('SIGTERM');
+      }
+      await Promise.race([
+        stopped,
+        new Promise((_, reject) => {
+          shutdownTimer = setTimeout(
+            () => reject(new Error('Simulation server did not exit within 15 seconds')),
+            15000,
+          );
+        }),
+      ]);
+      console.log('Runtime cleanup: Python stopped');
+    } catch (error) {
+      cleanupError ??= error;
+      console.error('Runtime cleanup: server stop failed', error);
+    } finally {
+      clearTimeout(shutdownTimer);
+    }
+  }
+  // Do not await 'close': descendants may retain an inherited stderr handle.
+  server.stderr?.destroy();
+  if (cleanupError) throw cleanupError;
 }

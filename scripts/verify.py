@@ -92,7 +92,14 @@ def main():
     parser.add_argument(
         "--campaign", action="store_true", help="Also rerun the complete frozen assurance campaign"
     )
+    parser.add_argument(
+        "--windows-compat",
+        action="store_true",
+        help="Windows functional/native checks with platform-bound historical replays reported separately",
+    )
     args = parser.parse_args()
+    if args.windows_compat and os.name != "nt":
+        parser.error("--windows-compat is intended only for Windows hosts")
     output = args.output_dir.resolve()
     if output.exists() and any(output.iterdir()):
         parser.error("Output directory is not empty; use a new directory")
@@ -105,6 +112,25 @@ def main():
     def step(name, command, cwd=ROOT, **kwargs):
         row = run_step(name, command, cwd, output, **kwargs)
         rows.append(row)
+        return row
+
+    def native_replay(name, command):
+        """Require strict replay OR the specific native-identity rejection."""
+        if not args.windows_compat:
+            return step(name, command)
+        row = step(name, command, expected=2)
+        message = (output / (name + ".txt")).read_text(encoding="utf-8").lower()
+        if row["exit_code"] == 0:
+            row["status"] = "passed"
+            row["expected_exit"] = 0
+        elif row["exit_code"] == 2 and (
+            "solver version" in message or "opendss version" in message
+        ):
+            row["status"] = "incompatible-native-record"
+            row["note"] = "Correctly rejected a different native solver; not a successful historical replay"
+        else:
+            row["status"] = "failed"
+            row["error"] = "Expected an actual strict replay or explicit OpenDSS-version rejection"
         return row
 
     step("dependencies", [python, "-m", "pip", "check"])
@@ -168,17 +194,14 @@ def main():
     elif extended["status"] == "passed":
         extended["status"] = "failed"
         extended["error"] = "Reference command did not write an evidence report"
-    configured = step(
-        "configured-pq-reference",
-        [
-            python,
-            "experiments/run_configured_reference.py",
+    configured_command = [python, "experiments/run_configured_reference.py"]
+    if not args.windows_compat:
+        configured_command += [
             "--verify-report",
             "experiments/configured_reference_results/results.json",
-            "--output",
-            str(output / "configured-reference.json"),
-        ],
-    )
+        ]
+    configured_command += ["--output", str(output / "configured-reference.json")]
+    configured = step("configured-pq-reference", configured_command)
     configured_reference_passed = False
     if configured["status"] == "passed":
         try:
@@ -204,15 +227,25 @@ def main():
             str(output / "model-reference.json"),
         ],
     )
-    step(
-        "reference-settings-sensitivity",
-        [
-            python,
-            "experiments/run_reference_sensitivity.py",
+    sensitivity_command = [python, "experiments/run_reference_sensitivity.py"]
+    if args.windows_compat:
+        sensitivity_command += ["--output", str(output / "reference-sensitivity.json")]
+    else:
+        sensitivity_command += [
             "--verify-report",
             "experiments/reference_sensitivity_results/results.json",
-        ],
-    )
+        ]
+    sensitivity = step("reference-settings-sensitivity", sensitivity_command)
+    if args.windows_compat and sensitivity["status"] == "passed":
+        try:
+            study = json.loads(
+                (output / "reference-sensitivity.json").read_text(encoding="utf-8")
+            )
+            if study["diagnostic_controls_matched"] is not True or len(study["rows"]) != 4:
+                raise ValueError("Windows reference settings did not reproduce four controls")
+        except (OSError, KeyError, TypeError, ValueError) as exc:
+            sensitivity["status"] = "failed"
+            sensitivity["error"] = str(exc)
     step("equipment-example", [python, "examples/equipment_availability.py"])
     step("live-episode-example", [python, "examples/live_episode.py"])
     step("restoration-episode-example", [python, "examples/restoration_episode.py"])
@@ -229,7 +262,10 @@ def main():
         "measurement-refresh-consistency",
         [python, "experiments/run_measurement_refresh.py", "--verify-report"],
     )
-    step("evidence-consistency", [python, "scripts/check_evidence.py"])
+    evidence_command = [python, "scripts/check_evidence.py"]
+    if args.windows_compat:
+        evidence_command.append("--static-only")
+    step("evidence-consistency", evidence_command)
     step(
         "native-reuse-consistency",
         [python, "experiments/run_native_reuse.py", "--verify-report"],
@@ -239,7 +275,7 @@ def main():
         ("regression.json", "verify-run"),
         ("temporal.json", "verify-run"),
     ):
-        step(
+        native_replay(
             "replay-" + name.removesuffix(".json"),
             [*cli, command, "--file", "experiments/examples/" + name],
         )
@@ -249,7 +285,7 @@ def main():
             {"name": "defect-replay", "status": "failed", "error": "No bundled reproducers found"}
         )
     for path in reproducers:
-        step(
+        native_replay(
             "replay-defect-" + path.stem, [python, "experiments/reproduce_assurance.py", str(path)]
         )
     if args.skip_browser:
@@ -292,6 +328,12 @@ def main():
         "python": platform.python_version(),
         "platform": platform.platform(),
         "interpreter": "python",
+        "verification_scope": (
+            "windows-operational-compatibility"
+            if args.windows_compat
+            else "full-local-verification"
+        ),
+        "frozen_native_evidence_compared": not args.windows_compat,
         "log_path_policy": "Machine-specific absolute paths use portable placeholders; counts, exit codes, warnings and numerical results are retained.",
         "steps": rows,
         "software_checks_passed": not any(r["status"] == "failed" for r in rows),
@@ -331,6 +373,14 @@ def main():
     if verification_inputs(ROOT) != inputs_before:
         report["software_checks_passed"] = False
         report["input_error"] = "Verification inputs changed while checks were running"
+    report["full_release_verified"] = (
+        report["software_checks_passed"] and not args.windows_compat and not args.skip_browser
+    )
+    if args.windows_compat:
+        report["interpretation"] += (
+            " Windows compatibility does not claim equality with frozen Linux native outputs "
+            "or a complete cross-platform scientific release qualification."
+        )
     (output / "verification.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))
     return 0 if report["software_checks_passed"] else 1

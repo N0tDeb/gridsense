@@ -55,8 +55,8 @@ gridsense serve
 ```
 
 Open **http://127.0.0.1:8000**. [SETUP.md](SETUP.md) includes Windows PowerShell
-commands, browser setup, CLI workflows and troubleshooting. Windows execution
-and hosted CI have not yet been verified.
+commands, browser setup, CLI workflows and troubleshooting. Linux hosted CI passed on November 15, 2026; full Windows verification
+failed and remains a documented compatibility workstream.
 
 ## Follow an outage through restoration
 

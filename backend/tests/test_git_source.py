@@ -30,15 +30,18 @@ def test_git_excludes_live_database_and_journals_in_custom_directory(repository,
         db.commit()
         files = {p.relative_to(repository).as_posix() for p in path.parent.iterdir()}
         assert len(files) == 3
+        # Text-mode stdin translates LF to CRLF on Windows. Git treats the
+        # stray CR as part of the name, so ignored SQLite files look unignored.
+        # Use byte-exact, NUL-delimited names on every OS.
         ignored = subprocess.run(
-            ["git", "check-ignore", "--stdin"],
+            ["git", "check-ignore", "-z", "--stdin"],
             cwd=repository,
-            input="\n".join(sorted(files)) + "\n",
-            text=True,
+            input=b"\0".join(name.encode("utf-8") for name in sorted(files)) + b"\0",
             capture_output=True,
-            check=True,
+            check=False,
         )
-        assert set(ignored.stdout.splitlines()) == files
+        assert ignored.returncode == 0, ignored.stderr.decode("utf-8", errors="replace")
+        assert {name.decode("utf-8") for name in ignored.stdout.split(b"\0") if name} == files
         kept = subprocess.run(
             ["git", "check-ignore", "--quiet", "backend/example.py"],
             cwd=repository,

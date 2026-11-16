@@ -1,5 +1,6 @@
 """Independently check packaged campaign tables, fingerprints and temporal replay."""
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -20,6 +21,14 @@ def check(condition, message):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--static-only",
+        action="store_true",
+        help="Audit frozen tables and fingerprints without replaying native-specific records",
+    )
+    args = parser.parse_args()
+
     def study(folder, filename="results.json"):
         return json.loads((ROOT / "experiments" / folder / filename).read_text(encoding="utf-8"))
 
@@ -223,7 +232,7 @@ def main():
         if row["variant"].endswith("control"):
             check(not row["detected"], "Negative control false detection")
     temporal_replays = []
-    for row in result["temporal_rows"]:
+    for row in ([] if args.static_only else result["temporal_rows"]):
         request = TemporalInput.model_validate(row["request"])
         events = [DeviceEvent.model_validate(e) for e in row["simulation"]["events"]]
         actual = simulate_events(request, events)
@@ -251,7 +260,7 @@ def main():
             "Temporal count mismatch",
         )
     reproductions = []
-    for item in result["reproducers"]:
+    for item in ([] if args.static_only else result["reproducers"]):
         record = json.loads((directory / item["file"]).read_text(encoding="utf-8"))
         replay = replay_defect(record)
         check(replay["matched"], "Defect replay mismatch")
@@ -276,6 +285,7 @@ def main():
                 "summary_counts_match": True,
                 "fingerprints_match": True,
                 "snapshot_pairs": len(rows),
+                "native_replays_executed": not args.static_only,
                 "temporal_replays": temporal_replays,
                 "defect_replays": reproductions,
                 "campaign_costs": result["costs"],
