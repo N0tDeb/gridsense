@@ -127,7 +127,9 @@ def main():
             "solver version" in message or "opendss version" in message
         ):
             row["status"] = "incompatible-native-record"
-            row["note"] = "Correctly rejected a different native solver; not a successful historical replay"
+            row["note"] = (
+                "Correctly rejected a different native solver; not a successful historical replay"
+            )
         else:
             row["status"] = "failed"
             row["error"] = "Expected an actual strict replay or explicit OpenDSS-version rejection"
@@ -238,9 +240,7 @@ def main():
     sensitivity = step("reference-settings-sensitivity", sensitivity_command)
     if args.windows_compat and sensitivity["status"] == "passed":
         try:
-            study = json.loads(
-                (output / "reference-sensitivity.json").read_text(encoding="utf-8")
-            )
+            study = json.loads((output / "reference-sensitivity.json").read_text(encoding="utf-8"))
             if study["diagnostic_controls_matched"] is not True or len(study["rows"]) != 4:
                 raise ValueError("Windows reference settings did not reproduce four controls")
         except (OSError, KeyError, TypeError, ValueError) as exc:
